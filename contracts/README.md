@@ -1,4 +1,4 @@
-# Contrato del backend — AUSENTE
+# Contrato del backend — PARCIAL
 
 Estado: **PARCIAL** — ver [`WATCH_API_CONTRACT.md`](WATCH_API_CONTRACT.md) (rutas medidas; faltan schemas y dos bloqueos del backend).
 
