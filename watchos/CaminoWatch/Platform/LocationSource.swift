@@ -23,6 +23,8 @@ final class LocationSource: NSObject, CLLocationManagerDelegate {
 
     private let manager: CLLocationManager
     private var isRunning = false
+    /// Lectura única pendiente (pantalla "Cerca" sin etapa en curso).
+    private var oneShotPending = false
     private var lastDelivered: Date?
 
     override init() {
@@ -57,6 +59,20 @@ final class LocationSource: NSObject, CLLocationManagerDelegate {
         Log.sensors.info("Ubicación: inicio solicitado")
     }
 
+    /// Pide UNA posición (sin seguimiento continuo). Si ya hay seguimiento, no hace nada:
+    /// la siguiente posición llegará por `onFix`.
+    func requestOnce() {
+        guard !isRunning else {
+            return
+        }
+        guard permission == .granted else {
+            oneShotPending = true
+            return
+        }
+        oneShotPending = true
+        manager.requestLocation()
+    }
+
     func stop() {
         guard isRunning else {
             return
@@ -80,11 +96,19 @@ final class LocationSource: NSObject, CLLocationManagerDelegate {
         onPermissionChange?(current)
         if isRunning && current == .granted {
             beginUpdates()
+        } else if oneShotPending && current == .granted {
+            manager.requestLocation()
         }
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard isRunning else {
+        if !isRunning {
+            // Respuesta a `requestOnce`: se entrega la más reciente y se termina.
+            guard oneShotPending, let location = locations.last, location.horizontalAccuracy >= 0 else {
+                return
+            }
+            oneShotPending = false
+            onFix?(LocationSource.makeFix(location))
             return
         }
         for location in locations {
@@ -97,20 +121,24 @@ final class LocationSource: NSObject, CLLocationManagerDelegate {
                 continue
             }
             lastDelivered = location.timestamp
-            let fix = LocationFix(
-                point: GeoPoint(lat: location.coordinate.latitude, lon: location.coordinate.longitude),
-                accuracyMeters: location.horizontalAccuracy,
-                timestamp: location.timestamp
-            )
-            onFix?(fix)
+            onFix?(LocationSource.makeFix(location))
         }
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        oneShotPending = false
         Log.sensors.error("Ubicación: error \(Log.describe(error), privacy: .public)")
     }
 
     // MARK: - Privado
+
+    private static func makeFix(_ location: CLLocation) -> LocationFix {
+        return LocationFix(
+            point: GeoPoint(lat: location.coordinate.latitude, lon: location.coordinate.longitude),
+            accuracyMeters: location.horizontalAccuracy,
+            timestamp: location.timestamp
+        )
+    }
 
     private static func map(_ status: CLAuthorizationStatus) -> LocationPermission {
         switch status {

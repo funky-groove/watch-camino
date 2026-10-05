@@ -32,6 +32,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Toolchain
         run: xcodebuild -version && xcrun simctl list runtimes | grep -i watch || true
+      - name: Localizable.strings al día
+        run: python3 watchos/tools/gen_strings.py --check
       - name: XcodeGen
         run: brew install xcodegen
       - name: Generate project
@@ -57,3 +59,31 @@ jobs:
             -configuration Release \
             -destination 'generic/platform=watchOS Simulator' \
             CODE_SIGNING_ALLOWED=NO | tail -n 200
+
+  screenshots:
+    name: Capturas (simulador, escenarios DEMO)
+    needs: app
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: |
+          xcodebuild -version
+          xcrun simctl list runtimes | grep -i watch || true
+      - name: XcodeGen + Pillow
+        run: |
+          brew install xcodegen
+          python3 -m pip install --user --break-system-packages pillow \
+            || python3 -m pip install --user pillow \
+            || echo "Pillow no instalado; el script lo intentará en un venv"
+      - name: Capturas
+        working-directory: watchos
+        run: bash scripts/screenshots.sh "$GITHUB_WORKSPACE/watchos/out"
+      - name: Subir capturas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: watch-screenshots
+          path: watchos/out
+          if-no-files-found: warn

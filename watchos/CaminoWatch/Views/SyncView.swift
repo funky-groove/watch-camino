@@ -1,61 +1,118 @@
 import SwiftUI
 import CaminoCore
+import CaminoDesign
 
-/// Sincronizar (§10): estado legible + "Sincronizar ahora".
+/// Sincronización (§7, §10): estado legible, qué significa para el usuario y
+/// "sincronizar ahora". Nunca promete un envío que no ocurre (servidor de demostración).
 struct SyncView: View {
     @EnvironmentObject private var model: AppModel
+    @Environment(\.palette) private var palette
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 8) {
+        let status = model.syncStatus
+
+        return ScrollView {
+            VStack(alignment: .leading, spacing: Spacing.s) {
                 if model.isDemo {
                     DemoBadge()
                 }
 
-                Label(SyncText.status(model.syncStatus), systemImage: SyncText.symbol(model.syncStatus))
-                    .font(.headline)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityAddTraits(.isHeader)
+                StatusLine(
+                    symbol: SyncText.symbol(status),
+                    text: SyncText.status(status),
+                    tone: SyncText.tone(status)
+                )
+                .accessibilityAddTraits(.isHeader)
 
-                if model.pendingCount > 0 {
-                    Text(L10n.syncSavedEvents(model.pendingCount))
-                        .font(.footnote)
-                        .fixedSize(horizontal: false, vertical: true)
+                explanationText(explanation(for: status))
+
+                if model.pendingCount > 0 && !isPending(status) {
+                    explanationText(L10n.sync2Pending(model.pendingCount))
+                }
+
+                if model.isDemo && !isSynced(status) {
+                    explanationText(L10n.sync2Demo)
                 }
 
                 if model.deadLetterCount > 0 {
-                    Text(L10n.syncDeadLetters(model.deadLetterCount))
-                        .font(.footnote)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                if let explanation = explanation {
-                    Text(explanation)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    StatusLine(
+                        symbol: Icon.warning,
+                        text: L10n.sync2DeadLetters(model.deadLetterCount),
+                        tone: .warning
+                    )
+                    .padding(.top, Spacing.xs)
+                    explanationText(L10n.sync2DeadLettersExplain)
                 }
 
                 Button {
                     model.syncNowManually()
                 } label: {
-                    Label(L10n.syncNow, systemImage: "arrow.triangle.2.circlepath")
-                        .frame(maxWidth: .infinity, minHeight: 44)
+                    HStack(spacing: Spacing.xs) {
+                        IconView(name: SyncText.symbol(.syncing))
+                        Text(L10n.sync2Now)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
-                .disabled(model.syncStatus == .syncing)
+                .buttonStyle(SecondaryButtonStyle())
+                .disabled(status == .syncing)
+                .padding(.top, Spacing.s)
             }
         }
-        .navigationTitle(L10n.syncTitle)
+        .navigationTitle(L10n.sync2Title)
     }
 
-    private var explanation: String? {
-        switch model.syncStatus {
+    private func explanationText(_ text: String) -> some View {
+        Text(text)
+            .typeStyle(.body)
+            .foregroundStyle(palette.textPrimary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func explanation(for status: SyncStatus) -> String {
+        switch status {
+        case .synced:
+            // En Debug el servidor es simulado: no decir "guardado en el servidor".
+            return model.isDemo ? L10n.sync2Demo : L10n.sync2Synced
+        case .pending(let count):
+            return L10n.sync2Pending(count)
+        case .offline:
+            return L10n.sync2Offline
         case .blocked:
-            return L10n.syncBlockedExplain
+            return L10n.sync2Blocked
         case .needsLink:
-            return L10n.syncNeedsLinkExplain
-        default:
-            return model.isDemo ? L10n.syncDemoExplain : nil
+            return L10n.sync2NeedsLink
+        case .syncing:
+            return L10n.sync2Syncing
         }
     }
+
+    private func isPending(_ status: SyncStatus) -> Bool {
+        if case .pending = status {
+            return true
+        }
+        return false
+    }
+
+    private func isSynced(_ status: SyncStatus) -> Bool {
+        return status == .synced
+    }
+}
+
+#Preview("negro · servidor de demostración") {
+    NavigationStack {
+        SyncView()
+            .themed(.negro)
+    }
+    .environmentObject(AppModel())
+    .environmentObject(ThemeStore())
+}
+
+#Preview("perla · servidor de demostración") {
+    NavigationStack {
+        SyncView()
+            .themed(.perla)
+    }
+    .environmentObject(AppModel())
+    .environmentObject(ThemeStore())
 }

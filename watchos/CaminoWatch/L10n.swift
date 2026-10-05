@@ -5,11 +5,11 @@ import Foundation
 /// Cada clave está en `es.lproj/Localizable.strings`; el valor por defecto de aquí es
 /// idéntico y sólo se usa si la tabla no se encontrase, para que nunca se vea una clave.
 enum L10n {
-    private static func tr(_ key: String, _ value: String) -> String {
+    static func tr(_ key: String, _ value: String) -> String {
         return NSLocalizedString(key, tableName: nil, bundle: .main, value: value, comment: "")
     }
 
-    private static func format(_ key: String, _ value: String, _ argument: Int) -> String {
+    static func format(_ key: String, _ value: String, _ argument: Int) -> String {
         return String(format: tr(key, value), locale: Locale(identifier: "es_ES"), argument)
     }
 
@@ -21,59 +21,15 @@ enum L10n {
     static var demoBadge: String { tr("demo.badge", "DEMO") }
     static var demoAccessibility: String { tr("demo.a11y", "Modo demostración. Los datos no se envían a ningún servidor.") }
 
-    // MARK: Inicio
+    // MARK: Etapa
 
-    static var startStage: String { tr("home.start", "Comenzar etapa") }
-    static var startStageHint: String { tr("home.start.hint", "Elige la etapa y confírmala para empezar.") }
-
-    // MARK: Elegir etapa
-
-    static var pickerTitle: String { tr("picker.title", "Elegir etapa") }
-    static var pickerSuggested: String { tr("picker.suggested", "Sugerida") }
-    static var pickerConfirmTitle: String { tr("picker.confirm.title", "¿Comenzar esta etapa?") }
-    static var pickerConfirmStart: String { tr("picker.confirm.start", "Comenzar") }
-    static var fixturesNotice: String {
-        tr("picker.notice", "Datos de demostración con coordenadas aproximadas. No sirven para orientarse en el Camino.")
-    }
-
-    // MARK: Etapa activa
-
-    static var activeTitle: String { tr("active.title", "Etapa") }
     static var remaining: String { tr("active.remaining", "restantes") }
-    static var walked: String { tr("active.walked", "Recorrido") }
-    static var steps: String { tr("active.steps", "Pasos") }
-    static var time: String { tr("active.time", "Tiempo") }
-    static var nextPoi: String { tr("active.nextPoi", "Próximo POI") }
-    static var nextPoiSearching: String { tr("active.nextPoi.searching", "Buscando ubicación…") }
-    static var nextPoiNone: String { tr("active.nextPoi.none", "No quedan POI en esta etapa") }
-    static var lastAlert: String { tr("active.lastAlert", "Aviso") }
-    static var finish: String { tr("active.finish", "Finalizar") }
-    static var finishConfirmTitle: String { tr("active.finish.confirm.title", "¿Finalizar la etapa?") }
-    static var finishConfirmMessage: String {
-        tr("active.finish.confirm.message", "Se guardará el resumen. Una etapa finalizada no se puede reanudar.")
-    }
-    static var finishConfirmAction: String { tr("active.finish.confirm.action", "Finalizar etapa") }
-    static var finishConfirmCancel: String { tr("active.finish.confirm.cancel", "Seguir caminando") }
     static var locationDenied: String {
         tr("active.locationDenied", "Sin permiso de ubicación: no se mide la distancia ni hay avisos de POI.")
     }
     static var stepsUnavailable: String {
         tr("active.stepsUnavailable", "Sin acceso al movimiento: no se cuentan los pasos.")
     }
-
-    // MARK: Estadísticas
-
-    static var statsTitle: String { tr("stats.title", "Estadísticas") }
-    static var statsToday: String { tr("stats.today", "Hoy") }
-    static var statsTodayEmpty: String { tr("stats.today.empty", "Aún no has hecho ninguna etapa.") }
-    static var statsTotal: String { tr("stats.total", "Acumulado del Camino") }
-    static var statsStages: String { tr("stats.stages", "Etapas") }
-    static var statsDistance: String { tr("stats.distance", "Distancia") }
-
-    // MARK: Resumen
-
-    static var summaryTitle: String { tr("summary.title", "Etapa terminada") }
-    static var summarySaved: String { tr("summary.saved", "Guardado · se sincronizará") }
 
     // MARK: Sincronización
 
@@ -142,4 +98,15 @@ enum L10n {
         }
         return format("a11y.minutes.many", "%d minutos", count)
     }
+
+    // MARK: Sistema de diseño y POI
+
+    static var noData: String { tr("common.noData", "sin datos") }
+    static var categoryWater: String { tr("category.water", "Agua") }
+    static var categoryShelter: String { tr("category.shelter", "Albergue") }
+    static var categoryPharmacy: String { tr("category.pharmacy", "Farmacia") }
+    static var categoryHealth: String { tr("category.health", "Salud") }
+    static var categoryFood: String { tr("category.food", "Comida") }
+    static var categoryLandmark: String { tr("category.landmark", "Lugar de interés") }
+    static var spokenApproximately: String { tr("spoken.approximately", "aproximadamente") }
 }

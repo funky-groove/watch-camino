@@ -19,3 +19,8 @@ captures/
 
 # Python
 __pycache__/
+
+# Info.plist generados por XcodeGen
+watchos/CaminoWatch/Info.plist
+watchos/CaminoWidgets/Info.plist
+watchos/out/

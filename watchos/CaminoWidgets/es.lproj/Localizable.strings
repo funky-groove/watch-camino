@@ -1,0 +1,16 @@
+/* Textos de la extensión de widgets (CaminoWidgets). Base: español. */
+"widget.app" = "Camino Seguro";
+"widget.name" = "Mi etapa";
+"widget.description" = "Distancia y tiempo de la etapa en curso.";
+"widget.demo" = "DEMO";
+"widget.demo.a11y" = "Datos de demostración.";
+"widget.unit.km" = "km";
+"widget.nostage" = "Sin etapa";
+"widget.nostage.long" = "Sin etapa en curso";
+"widget.last" = "Última";
+"widget.open" = "Abre Camino Seguro";
+"widget.open.short" = "Abrir";
+"widget.nogps" = "Sin GPS";
+"widget.elapsed.a11y" = "Tiempo";
+"widget.of" = "de %@";
+"widget.progress.a11y" = "Etapa: %@ de %@";

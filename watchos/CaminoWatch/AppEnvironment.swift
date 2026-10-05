@@ -17,6 +17,13 @@ enum AppEnvironment {
         let pois = loadPoiSource()
         let api = makeApi()
 
+        #if DEBUG
+        // Escenarios de demostración (DemoScenario): nunca tocan el almacenamiento real.
+        if DemoScenario.isRequested {
+            return makeDemo(catalog: catalog, pois: pois, api: api)
+        }
+        #endif
+
         let sessionStore: any SessionStore
         let syncStore: any SyncQueueStore
         do {
@@ -82,3 +89,44 @@ enum AppEnvironment {
         }
     }
 }
+
+#if DEBUG
+/// Reloj de demostración: hora del sistema desplazada `offsetSeconds`.
+/// `DemoScenario` lo retrasa mientras siembra (p. ej. una etapa empezada hace 65 min)
+/// y lo devuelve a 0 al terminar.
+final class DemoOffsetClock: CaminoClock {
+    var offsetSeconds: TimeInterval = 0
+
+    init() {}
+
+    func now() -> Date {
+        return Date().addingTimeInterval(offsetSeconds)
+    }
+}
+
+extension AppEnvironment {
+    /// Reloj del escenario en curso; `nil` fuera de escenarios (almacenamiento real).
+    static var demoClock: DemoOffsetClock?
+
+    /// Dependencias para escenarios: almacenes EN MEMORIA, reloj desplazable y
+    /// credenciales en memoria. No lee ni escribe el directorio de la app ni el llavero.
+    static func makeDemo(catalog: FixtureStageCatalog, pois: FixturePoiSource, api: any CaminoApi) -> Dependencies {
+        let clock = DemoOffsetClock()
+        demoClock = clock
+        let controller = CaminoController(
+            catalog: catalog,
+            poiSource: pois,
+            sessionStore: InMemorySessionStore(),
+            syncStore: InMemorySyncQueueStore(),
+            api: api,
+            clock: clock,
+            ids: SystemIdGenerator()
+        )
+        Log.app.info("Entorno de escenario demo: persistencia en memoria")
+        return Dependencies(
+            controller: controller,
+            credentials: InMemoryCredentialStore()
+        )
+    }
+}
+#endif

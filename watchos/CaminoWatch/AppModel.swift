@@ -14,6 +14,18 @@ final class AppModel: ObservableObject {
     /// Último fix con precisión suficiente (sólo en memoria; para "Próximo POI").
     @Published private(set) var lastFix: LocationFix?
     @Published private(set) var lastAlert: PoiAlert?
+    /// Última posición recibida con cualquier precisión (para "Cerca" y la calidad de ubicación).
+    @Published private(set) var lastAnyFix: LocationFix?
+    @Published private(set) var locationPermission: LocationPermission = .notDetermined
+    /// Categorías que generan aviso (preferencia local).
+    @Published var alertCategories: Set<PoiCategory> {
+        didSet {
+            controller.alertCategories = alertCategories
+            AlertPreferences.save(alertCategories)
+        }
+    }
+    /// Navegación pedida desde fuera (enlace directo o notificación). `RootView` la consume.
+    @Published var requestedRoutes: [Route]?
     @Published private(set) var locationDenied: Bool = false
     @Published private(set) var stepsUnavailable: Bool = false
     /// Resumen a mostrar tras finalizar (hoja modal).
@@ -36,10 +48,16 @@ final class AppModel: ObservableObject {
         self.location = LocationSource()
         self.steps = StepSource()
         self.notifier = Notifier()
+        let categories = AlertPreferences.load()
+        self.alertCategories = categories
+        dependencies.controller.alertCategories = categories
 
         wire()
         refresh()
         restoreActiveSessionIfNeeded()
+        #if DEBUG
+        DemoScenario.apply(to: self)
+        #endif
     }
 
     // MARK: - Lectura para la UI
@@ -96,7 +114,59 @@ final class AppModel: ObservableObject {
         return pois.contains(where: { !session.alertedPoiIds.contains($0.id) })
     }
 
+    /// Calidad de la última ubicación conocida.
+    func locationQuality(at date: Date) -> LocationQuality {
+        return LocationQuality.of(lastAnyFix, now: date)
+    }
+
+    /// Lista "Cerca" a partir de la última ubicación conocida (vacía si no hay ninguna).
+    func nearby(waterOnly: Bool) -> [PoiAlert] {
+        guard let fix = lastAnyFix else {
+            return []
+        }
+        let categories: Set<PoiCategory> = waterOnly ? [.water] : Set(PoiCategory.allCases)
+        return controller.nearby(from: fix.point, categories: categories)
+    }
+
+    /// Agua más cercana (para el acceso directo de "Mi etapa").
+    var nearestWater: PoiAlert? {
+        return nearby(waterOnly: true).first
+    }
+
+    func poi(id: String) -> Poi? {
+        return controller.poi(id: id)
+    }
+
+    /// Distancia actual a un POI, si hay ubicación.
+    func distance(to poi: Poi) -> Double? {
+        guard let fix = lastAnyFix else {
+            return nil
+        }
+        return Geo.haversine(fix.point, poi.location)
+    }
+
+    /// Si el POI ya se avisó en la etapa en curso.
+    func wasAlerted(_ poiId: String) -> Bool {
+        return activeSession?.alertedPoiIds.contains(poiId) ?? false
+    }
+
     // MARK: - Acciones
+
+    /// Abre un enlace directo (complicación, widget, notificación). Nunca ejecuta acciones.
+    func open(_ url: URL) {
+        guard let link = DeepLink.parse(url) else {
+            Log.app.info("Enlace directo descartado")
+            return
+        }
+        requestedRoutes = link.routes
+    }
+
+    /// Una sola lectura de ubicación para "Cerca" cuando no hay etapa en curso
+    /// (con etapa en curso la ubicación ya está activa). No activa seguimiento continuo.
+    func refreshLocationOnce() {
+        location.requestPermissionIfNeeded()
+        location.requestOnce()
+    }
 
     /// Permisos en contexto: al pulsar "Comenzar etapa" (§11).
     func requestPermissions() {
@@ -171,6 +241,7 @@ final class AppModel: ObservableObject {
         location.onPermissionChange = { [weak self] permission in
             Task { @MainActor in
                 self?.locationDenied = (permission == .denied)
+                self?.locationPermission = permission
             }
         }
         steps.onSteps = { [weak self] count in
@@ -185,6 +256,12 @@ final class AppModel: ObservableObject {
         }
 
         locationDenied = (location.permission == .denied)
+        locationPermission = location.permission
+        notifier.onOpenPoi = { [weak self] poiId in
+            Task { @MainActor in
+                self?.requestedRoutes = [.poi(id: poiId)]
+            }
+        }
     }
 
     /// Restauración tras muerte del proceso (§12): si había etapa activa, se
@@ -210,6 +287,7 @@ final class AppModel: ObservableObject {
     }
 
     private func handleFix(_ fix: LocationFix) {
+        lastAnyFix = fix
         guard controller.activeSession != nil else {
             return
         }
@@ -221,7 +299,7 @@ final class AppModel: ObservableObject {
         }
         if let alert = result.alert {
             lastAlert = alert
-            notifier.notifyPoi(poiId: alert.poi.id, text: Formatters.poiAlertText(alert))
+            notifier.notifyPoi(poiId: alert.poi.id, text: PoiText.alertText(alert))
             Log.app.info("Aviso POI emitido")
         }
     }
@@ -230,11 +308,24 @@ final class AppModel: ObservableObject {
         controller.updateSteps(count)
     }
 
+    #if DEBUG
+    /// Sólo Debug (capturas y previews con DemoScenario): inyecta una posición de demostración.
+    func injectDemoFix(_ fix: LocationFix) {
+        handleFix(fix)
+    }
+
+    /// Sólo Debug: acceso al controlador para sembrar escenarios de demostración.
+    var demoController: CaminoController {
+        return controller
+    }
+    #endif
+
     private func refresh() {
         state = controller.state
         history = controller.history
         syncStatus = controller.sync.status
         pendingCount = controller.sync.pendingCount
         deadLetterCount = controller.sync.deadLetterCount
+        WidgetBridge.update(from: self)
     }
 }

@@ -29,6 +29,9 @@ targets:
       - path: CaminoWatch
         excludes:
           - Info.plist
+          - CaminoWatch.entitlements
+      # Instantánea para widgets: se compila en la app y en CaminoWidgets.
+      - path: Shared
       # Fixtures compartidas por referencia (no se copian): datos de demostración.
       - path: ../shared/fixtures/stages.json
         buildPhase: resources
@@ -37,6 +40,11 @@ targets:
     dependencies:
       - package: CaminoCore
         product: CaminoCore
+      - package: CaminoCore
+        product: CaminoDesign
+      # Extensión WidgetKit (complicaciones / Smart Stack), embebida en la app.
+      - target: CaminoWidgets
+        embed: true
     info:
       path: CaminoWatch/Info.plist
       properties:
@@ -51,11 +59,18 @@ targets:
         NSMotionUsageDescription: "Camino Seguro cuenta tus pasos durante la etapa con el sensor de movimiento del reloj."
         UIBackgroundModes:
           - location
+        # Enlaces directos desde complicaciones, widgets y notificaciones (DeepLink en CaminoCore).
+        CFBundleURLTypes:
+          - CFBundleURLName: org.caminoseguro.watch.deeplink
+            CFBundleURLSchemes:
+              - caminoseguro
     settings:
       base:
         # Placeholder: sustituir por el identificador real del equipo antes de publicar.
         PRODUCT_BUNDLE_IDENTIFIER: org.caminoseguro.watch
         PRODUCT_NAME: CaminoWatch
+        # App Group group.org.caminoseguro.watch (instantánea del widget). Requiere firma real.
+        CODE_SIGN_ENTITLEMENTS: CaminoWatch/CaminoWatch.entitlements
         SDKROOT: watchos
         SUPPORTED_PLATFORMS: "watchos watchsimulator"
         TARGETED_DEVICE_FAMILY: "4"
@@ -72,11 +87,60 @@ targets:
         Release:
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited)"
 
+  # Complicaciones / widgets "Mi etapa" (WidgetKit, watchOS 10+). Ver CaminoWidgets/README.md.
+  CaminoWidgets:
+    type: app-extension
+    platform: watchOS
+    deploymentTarget: "10.0"
+    sources:
+      - path: CaminoWidgets
+        excludes:
+          - Info.plist
+          - CaminoWidgets.entitlements
+          - README.md
+      - path: Shared
+    dependencies:
+      - package: CaminoCore
+        product: CaminoCore
+      - package: CaminoCore
+        product: CaminoDesign
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
+    info:
+      path: CaminoWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: Camino Seguro
+        CFBundleDevelopmentRegion: es
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        # Debe empezar por el bundle id de la app contenedora.
+        PRODUCT_BUNDLE_IDENTIFIER: org.caminoseguro.watch.widgets
+        PRODUCT_NAME: CaminoWidgets
+        SDKROOT: watchos
+        SUPPORTED_PLATFORMS: "watchos watchsimulator"
+        TARGETED_DEVICE_FAMILY: "4"
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_ENTITLEMENTS: CaminoWidgets/CaminoWidgets.entitlements
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks"
+        SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
+        ENABLE_PREVIEWS: YES
+      configs:
+        Debug:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) DEBUG"
+        Release:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited)"
+
 schemes:
   CaminoWatch:
     build:
       targets:
         CaminoWatch: all
+        CaminoWidgets: all
     run:
       config: Debug
     test:
