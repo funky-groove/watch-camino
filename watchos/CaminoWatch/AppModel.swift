@@ -70,8 +70,14 @@ final class AppModel: ObservableObject {
     private var faceAccessEvaluated = false
     /// Alguna escritura en disco falló desde la última comprobación.
     private var storageWriteFailed = false
+    /// Bienvenida visual (§K): se decide una vez por proceso al final de `init`.
+    let welcome: WelcomeController
+    /// La pantalla principal apareció con la bienvenida encima: el aviso de la esfera (§I) se
+    /// evalúa al retirarse (así su hoja nunca tapa el logo). Devuelve si la pila está vacía.
+    private var deferredFaceAccessCheck: (() -> Bool)?
 
     init() {
+        self.welcome = WelcomeController()
         let dependencies = AppEnvironment.make()
         self.controller = dependencies.controller
         self.credentials = dependencies.credentials
@@ -108,6 +114,13 @@ final class AppModel: ObservableObject {
         #if DEBUG
         DemoScenario.apply(to: self)
         #endif
+        // §K.2: antes del primer fotograma. Las rutas pedidas aquí vienen de escenarios demo;
+        // los enlaces directos y las notificaciones llegan después y la cancelan (`open`).
+        welcome.evaluateAtLaunch(
+            hasActiveOrRestoredTrip: controller.activeSession != nil,
+            launchedFromDeepLink: requestedRoutes != nil,
+            launchedForSos: requestedRoutes?.contains(.sos) ?? false
+        )
     }
 
     // MARK: - Lectura para la UI
@@ -321,6 +334,11 @@ final class AppModel: ObservableObject {
 
     /// Abre un enlace directo (complicación, widget, notificación). Nunca ejecuta acciones.
     func open(_ url: URL) {
+        // Abierta desde complicación, widget o notificación: sin bienvenida (§K.2). Se retira
+        // después de pedir la ruta, para que el aviso aplazado (§I) ya la vea.
+        defer {
+            welcome.cancelForExternalLaunch()
+        }
         guard let link = DeepLink.parse(url) else {
             Log.app.info("Enlace directo descartado")
             return
@@ -457,11 +475,37 @@ final class AppModel: ObservableObject {
 
     /// La pantalla principal ha aparecido. Sólo la primera vez en cada arranque se decide
     /// si se ofrece el aviso (sin trayecto, sin otra hoja ni navegación pendiente).
-    func homeAppeared(pathIsEmpty: Bool) {
+    /// `pathIsEmpty` se consulta al decidir (puede ser tras la bienvenida, §K).
+    func homeAppeared(pathIsEmpty: @escaping () -> Bool) {
         faceAccess.markHomeSeen()
         guard !faceAccessEvaluated else {
             return
         }
+        if welcome.isShowing {
+            deferredFaceAccessCheck = pathIsEmpty
+            return
+        }
+        evaluateFaceAccess(pathIsEmpty: pathIsEmpty())
+    }
+
+    /// La bienvenida se ha retirado (o no se mostró).
+    private func welcomeFinished() {
+        if let check = deferredFaceAccessCheck {
+            deferredFaceAccessCheck = nil
+            if !faceAccessEvaluated {
+                evaluateFaceAccess(pathIsEmpty: check())
+            }
+        }
+        #if DEBUG
+        // Escenarios demo: nada de escrituras en el almacenamiento real.
+        if DemoScenario.isRequested {
+            return
+        }
+        #endif
+        BrandLogoLoader.shared.scheduleBackgroundRefresh()
+    }
+
+    private func evaluateFaceAccess(pathIsEmpty: Bool) {
         faceAccessEvaluated = true
         guard pathIsEmpty, finishedSummary == nil, requestedRoutes == nil else {
             return
@@ -558,7 +602,12 @@ final class AppModel: ObservableObject {
         notifier.onOpenPoi = { [weak self] poiId in
             Task { @MainActor in
                 self?.requestedRoutes = [.poi(id: poiId)]
+                // Abierta desde una notificación: sin bienvenida (§K.2).
+                self?.welcome.cancelForExternalLaunch()
             }
+        }
+        welcome.onFinished = { [weak self] in
+            self?.welcomeFinished()
         }
     }
 

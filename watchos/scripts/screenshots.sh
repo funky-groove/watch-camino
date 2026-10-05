@@ -14,6 +14,8 @@
 #    sea el idioma del simulador.
 #    V1.1: trayecto en pausa, perfil ampliado, Lugares, ayuda de la esfera, aviso de primer uso
 #    (forzado con -demo.route face-prompt), resumen y trayecto en unidades imperiales/velocidad.
+#    Bienvenida visual (§K, sólo tema negro y reloj pequeño): `bienvenida`, con -demo.welcome show
+#    (la capa queda fija para poder capturarla).
 #    Las complicaciones (CaminoWidgets) NO se pueden capturar con simctl: se verifican con los
 #    #Preview de CaminoWidgets.swift en Xcode (activo, pausado en millas, datos antiguos, sin
 #    trayecto, sin datos).
@@ -272,6 +274,8 @@ run_device() {  # $1 devicetype, $2 nombre, $3 = "small" | "large"
     done
   done
   if [ "$3" = "small" ]; then
+    # Bienvenida visual (§K): negro, sólo en el reloj pequeño (40 mm).
+    capture "$udid" "$dslug" "$2" negro bienvenida idle "" "" "$SPANISH_ARGS -demo.welcome show"
     if xcrun simctl ui "$udid" content_size accessibility-large >/dev/null 2>&1; then
       log "Texto grande (accessibility-large) activado en $2"
       for theme in "${THEMES[@]}"; do

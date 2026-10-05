@@ -75,7 +75,7 @@ struct HomeView: View {
         .onAppear {
             // Cuenta como "pantalla principal mostrada" y, en la primera aparición del
             // arranque, decide si se ofrece el aviso «Accede desde tu esfera» (§I).
-            model.homeAppeared(pathIsEmpty: path.isEmpty)
+            model.homeAppeared(pathIsEmpty: { path.isEmpty })
         }
         .onChange(of: path.isEmpty) { _, isEmpty in
             // De vuelta en esta pantalla (p. ej. al salir de elegir etapa sin iniciar).

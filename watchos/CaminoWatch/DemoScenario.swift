@@ -15,6 +15,8 @@ import CaminoCore
 /// `face-prompt` no es una pantalla: fuerza la hoja «Accede desde tu esfera» (§I) sin sus
 /// condiciones. `summary` muestra el resumen del último trayecto (escenario `finished`).
 ///     -demo.scrollToEnd YES   (pantalla principal desplazada hasta «Finalizar trayecto»)
+///     -demo.welcome show      (bienvenida visual §K forzada y FIJA hasta que se toca, para
+///                              capturarla; sin este argumento los escenarios no la muestran)
 ///
 /// Con `-demo.scenario`, `AppEnvironment` usa almacenes EN MEMORIA y un reloj desplazable
 /// (`DemoOffsetClock`): el almacenamiento real del reloj nunca se toca.
@@ -24,6 +26,13 @@ enum DemoScenario {
     static let scenarioKey = "demo.scenario"
     static let routeKey = "demo.route"
     static let scrollToEndKey = "demo.scrollToEnd"
+    static let welcomeKey = "demo.welcome"
+
+    /// `-demo.welcome show`: fuerza la bienvenida (§K) sin sus condiciones y la mantiene.
+    static var welcomeForced: Bool {
+        let raw = UserDefaults.standard.string(forKey: welcomeKey) ?? ""
+        return raw.trimmingCharacters(in: .whitespaces).lowercased() == "show"
+    }
 
     /// Capturas: desplazar la pantalla principal hasta el final (sólo con escenario).
     static var scrollToEnd: Bool {

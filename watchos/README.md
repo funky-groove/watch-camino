@@ -133,3 +133,22 @@ Cuando llegue el contrato se añade un `HttpCaminoApi` que implemente `CaminoApi
   con trayecto distancia en las unidades del usuario + «en marcha»/«pausado»; datos de > 15 min →
   "hace X min". Se verifican con los `#Preview` de `CaminoWidgets.swift` (simctl no las captura).
 - Escenarios DEMO nuevos: `-demo.scenario paused`; `-demo.route profile|places|settings-face|summary|face-prompt`.
+
+### Bienvenida visual (spec §K)
+
+- Capa SwiftUI (`Welcome.swift`, `WelcomeHost`) **encima** de `RootView`, que ya está construida debajo:
+  logo sobre negro 0,6 s + desvanecimiento 0,4 s (`WelcomeTiming`); con «Reducir movimiento», sin
+  animación y retirada a los 0,6 s. No captura toques (un toque la retira y llega a la interfaz),
+  oculta a VoiceOver. La pantalla de lanzamiento del sistema no cambia.
+- Cuándo (`WelcomePolicy.shouldShow`, núcleo): sólo en la primera evaluación del proceso, sin trayecto
+  activo ni restaurado, sin ruta pedida (escenarios), y nunca si llega `onOpenURL` (complicación/widget)
+  o se toca una notificación (en ese caso se retira al instante). El aviso de la esfera (§I) espera a que
+  se retire.
+- Logo: incluido `Assets.xcassets/BrandLogo` (concha con cruz roja, de `design/icons/fuente-cruz-roja.png`).
+  Caché remota en `Library/Caches/CaminoSeguro/Brand` (`FileBrandAssetStore`: `brand.json` +
+  `brand-<sha256>.png`), validada con `BrandAssetValidator` (PNG cuadrado 256–2048 px, ≤ 512 KiB, IHDR,
+  SHA-256 en Swift puro) y leída fuera del hilo principal; si no está lista para el primer fotograma, logo
+  incluido. Origen remoto **BLOQUEADO**: `BlockedBrandAssetSource` (sin red; el refresco en segundo plano
+  no descarga nada). Un recurso inválido nunca sustituye a uno válido.
+- Captura: `-demo.scenario idle -demo.welcome show` (capa fija hasta tocarla) → `bienvenida` en
+  `scripts/screenshots.sh` (negro, reloj pequeño). Sin `-demo.welcome` los escenarios no la muestran.
