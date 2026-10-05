@@ -446,3 +446,26 @@ Se muestra sólo si TODO se cumple:
 - Con **reducción de movimiento** activa: sin animación; la capa se retira de golpe a los 0,6 s.
 - Accesibilidad: decorativa, oculta a lectores de pantalla; no roba el foco.
 - La pantalla de lanzamiento del sistema no se modifica.
+
+## L. Trazabilidad de peticiones (obligatoria en el adaptador HTTP)
+
+Cada petición del reloj al backend lleva:
+
+| Cabecera | Valor | Regla |
+|---|---|---|
+| `X-Request-ID` | UUID v4 nuevo por **intento** | Si el servidor devuelve `X-Request-ID`, se guarda el del servidor. |
+| `traceparent` | W3C Trace Context (`00-<trace-id 32 hex>-<span-id 16 hex>-01`) | Un `trace-id` por **operación** (p. ej. finalizar trayecto con sus reintentos). |
+| `Idempotency-Key` | `eventId` del `SyncEvent` | Igual en todos los reintentos del mismo evento. |
+| `User-Agent` | `CaminoSeguroWatch/<versión> (<watchOS|WearOS> <versión SO>)` | Sin identificadores de dispositivo. |
+
+**El reloj nunca envía el id de usuario en una cabecera**: el servidor lo obtiene del JWT validado (`sub`)
+y lo registra junto al `X-Request-ID`. Así no se puede suplantar en las trazas.
+
+Registro local de diagnóstico (sin datos personales): últimas 50 peticiones con hora, plantilla de ruta
+(`/api/journeys/{id}/finish`, sin ids ni coordenadas), código, `X-Request-ID`, `trace-id` y duración.
+En caso de error la UI muestra una referencia corta (8 primeros caracteres del `X-Request-ID`) que el
+usuario puede facilitar a soporte. Se borra al cerrar sesión.
+
+Requisitos para el backend (BFF y FastAPI): aceptar `X-Request-ID` si es UUID válido o generarlo,
+devolverlo siempre, propagar `X-Request-ID` y `traceparent` hasta FastAPI/PostgREST, y registrar en cada
+línea `request_id`, `trace_id`, `sub`, ruta, estado y duración — nunca tokens ni coordenadas.
