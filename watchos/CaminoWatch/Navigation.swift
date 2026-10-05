@@ -10,6 +10,9 @@ enum Route: Hashable {
     case poi(id: String)
     case settings
     case sync
+    /// Pantalla de emergencia (botón «SOS» de la cabecera). Se apila sobre la pantalla
+    /// principal: al volver, esa pantalla sigue viva con su posición de desplazamiento.
+    case sos
 }
 
 /// Métricas con ficha de detalle.

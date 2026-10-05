@@ -17,6 +17,10 @@ final class AppModel: ObservableObject {
     /// Última posición recibida con cualquier precisión (para "Cerca" y la calidad de ubicación).
     @Published private(set) var lastAnyFix: LocationFix?
     @Published private(set) var locationPermission: LocationPermission = .notDetermined
+    /// Permiso de notificaciones (estado real, se consulta al sistema).
+    @Published private(set) var notificationPermission: LocationPermission = .notDetermined
+    /// Inicio de trayecto en curso: impide un doble inicio por doble toque.
+    @Published private(set) var isStarting: Bool = false
     /// Categorías que generan aviso (preferencia local).
     @Published var alertCategories: Set<PoiCategory> {
         didSet {
@@ -39,12 +43,15 @@ final class AppModel: ObservableObject {
     private let location: LocationSource
     private let steps: StepSource
     private let notifier: Notifier
+    /// Llamada de emergencia (sistema, o simulada en escenarios DEMO).
+    private let dialer: any EmergencyDialer
 
     init() {
         let dependencies = AppEnvironment.make()
         self.controller = dependencies.controller
         self.credentials = dependencies.credentials
         self.isDemo = dependencies.controller.isDemo
+        self.dialer = dependencies.dialer
         self.location = LocationSource()
         self.steps = StepSource()
         self.notifier = Notifier()
@@ -54,6 +61,11 @@ final class AppModel: ObservableObject {
 
         wire()
         refresh()
+        refreshNotificationPermission()
+        // V-03: el estado guardado no se pudo leer (se apartó una copia): avisar, no callar.
+        if !dependencies.controller.startupErrors.isEmpty {
+            errorMessage = L10n.errorRecover
+        }
         restoreActiveSessionIfNeeded()
         #if DEBUG
         DemoScenario.apply(to: self)
@@ -133,6 +145,56 @@ final class AppModel: ObservableObject {
         return nearby(waterOnly: true).first
     }
 
+    // MARK: - SOS
+
+    /// `true` si la llamada de emergencia es simulada (escenarios DEMO / capturas).
+    var usesSimulatedDialer: Bool {
+        return dialer is MockEmergencyDialer
+    }
+
+    /// Posición más reciente disponible, de cualquier precisión: la última recibida en esta
+    /// ejecución o, tras relanzar, la guardada en la sesión activa.
+    var latestKnownFix: LocationFix? {
+        let candidates = [lastAnyFix, lastFix, activeSession?.lastFix].compactMap { $0 }
+        return candidates.max(by: { $0.timestamp < $1.timestamp })
+    }
+
+    /// Resumen de ubicación para la pantalla SOS (no pide permiso ni espera al GPS).
+    func emergencyLocation(at date: Date) -> EmergencyLocationSummary {
+        let permission: EmergencyLocationPermission
+        switch locationPermission {
+        case .granted:
+            permission = .granted
+        case .denied:
+            permission = .denied
+        case .notDetermined:
+            permission = .notDetermined
+        }
+        return EmergencyLocationSummary.of(fix: latestKnownFix, now: date, permission: permission)
+    }
+
+    /// Entrega la llamada al 112 al sistema (que pide confirmación). No pausa ni finaliza
+    /// el trayecto y no envía la ubicación a ningún sitio.
+    func requestEmergencyCall() -> DialResult {
+        let result = dialer.requestCall(number: .spainEU)
+        switch result {
+        case .handedToSystem:
+            Log.app.info("SOS: petición de llamada entregada")
+        case .failed:
+            Log.app.error("SOS: no se pudo pedir la llamada")
+        }
+        return result
+    }
+
+    /// Una lectura de ubicación para la pantalla SOS SÓLO si el permiso ya está concedido:
+    /// nunca lo pide. Con trayecto en curso la ubicación ya está activa y no hace nada.
+    func refreshLocationIfAuthorized() {
+        guard locationPermission == .granted else {
+            return
+        }
+        location.requestOnce()
+    }
+
     func poi(id: String) -> Poi? {
         return controller.poi(id: id)
     }
@@ -168,13 +230,31 @@ final class AppModel: ObservableObject {
         location.requestOnce()
     }
 
-    /// Permisos en contexto: al pulsar "Comenzar etapa" (§11).
+    /// Permisos en contexto: al pulsar "Iniciar trayecto" (§11).
     func requestPermissions() {
         location.requestPermissionIfNeeded()
-        notifier.requestPermissionIfNeeded()
+        notifier.requestPermissionIfNeeded { [weak self] in
+            self?.refreshNotificationPermission()
+        }
+    }
+
+    /// Consulta el estado real del permiso de notificaciones.
+    func refreshNotificationPermission() {
+        notifier.currentPermission { [weak self] permission in
+            self?.notificationPermission = permission
+        }
     }
 
     func startStage(_ stage: Stage) {
+        // Doble toque o confirmación repetida: un único inicio.
+        guard !isStarting, controller.activeSession == nil else {
+            Log.app.info("Inicio de trayecto ignorado: ya en curso")
+            return
+        }
+        isStarting = true
+        defer {
+            isStarting = false
+        }
         do {
             let session = try controller.start(stageId: stage.id)
             errorMessage = nil
@@ -190,6 +270,10 @@ final class AppModel: ObservableObject {
     }
 
     func finishStage() {
+        // Confirmación repetida: no hay nada que finalizar (sin mensaje de error falso).
+        guard controller.activeSession != nil else {
+            return
+        }
         do {
             let summary = try controller.finish()
             detachSensors()
@@ -215,6 +299,7 @@ final class AppModel: ObservableObject {
 
     /// La app vuelve a primer plano (scenePhase == .active): disparador de sync (§7).
     func appBecameActive() {
+        refreshNotificationPermission()
         Task {
             await controller.syncNow(manual: false)
             refresh()

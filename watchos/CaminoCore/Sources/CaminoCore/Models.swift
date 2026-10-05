@@ -72,13 +72,46 @@ public struct Poi: Codable, Equatable, Identifiable, Sendable {
     public var name: String
     public var category: PoiCategory
     public var location: GeoPoint
+    /// Teléfono del lugar (V1.1 §J), opcional. Sólo se ofrece «Llamar» si
+    /// `PhoneNumber.isValid(phone)`; los datos actuales no traen teléfonos.
+    public var phone: String?
 
-    public init(id: String, stageId: String, name: String, category: PoiCategory, location: GeoPoint) {
+    public init(
+        id: String,
+        stageId: String,
+        name: String,
+        category: PoiCategory,
+        location: GeoPoint,
+        phone: String? = nil
+    ) {
         self.id = id
         self.stageId = stageId
         self.name = name
         self.category = category
         self.location = location
+        self.phone = phone
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, stageId, name, category, location, phone
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        stageId = try c.decode(String.self, forKey: .stageId)
+        name = try c.decode(String.self, forKey: .name)
+        category = try c.decode(PoiCategory.self, forKey: .category)
+        location = try c.decode(GeoPoint.self, forKey: .location)
+        phone = try c.decodeIfPresent(String.self, forKey: .phone)
+    }
+
+    /// URL `tel:` si el teléfono del lugar es válido (§J); `nil` en otro caso.
+    public var telURL: URL? {
+        guard let phone = phone else {
+            return nil
+        }
+        return PhoneNumber.telURL(phone)
     }
 }
 
@@ -87,27 +120,91 @@ public struct LocationFix: Codable, Equatable, Sendable {
     public var point: GeoPoint
     public var accuracyMeters: Double
     public var timestamp: Date
+    /// Altitud GPS en metros (V1.1 §E). `nil` si el sensor no la da.
+    public var altitudeMeters: Double?
+    /// Precisión vertical en metros; negativa o `nil` = altitud no válida.
+    public var verticalAccuracyMeters: Double?
 
-    public init(point: GeoPoint, accuracyMeters: Double, timestamp: Date) {
+    public init(
+        point: GeoPoint,
+        accuracyMeters: Double,
+        timestamp: Date,
+        altitudeMeters: Double? = nil,
+        verticalAccuracyMeters: Double? = nil
+    ) {
         self.point = point
         self.accuracyMeters = accuracyMeters
         self.timestamp = timestamp
+        self.altitudeMeters = altitudeMeters
+        self.verticalAccuracyMeters = verticalAccuracyMeters
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case point, accuracyMeters, timestamp, altitudeMeters, verticalAccuracyMeters
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        point = try c.decode(GeoPoint.self, forKey: .point)
+        accuracyMeters = try c.decode(Double.self, forKey: .accuracyMeters)
+        timestamp = try c.decode(Date.self, forKey: .timestamp)
+        altitudeMeters = try c.decodeIfPresent(Double.self, forKey: .altitudeMeters)
+        verticalAccuracyMeters = try c.decodeIfPresent(Double.self, forKey: .verticalAccuracyMeters)
+    }
+}
+
+/// Muestra del perfil de altitud registrado (V1.1 §F).
+public struct ProfileSample: Codable, Equatable, Sendable {
+    /// Distancia recorrida (m) al tomar la muestra.
+    public var d: Double
+    /// Altitud (m).
+    public var alt: Double
+    /// `true` si hubo un hueco (> 200 m) antes de esta muestra: no se une con la anterior.
+    public var gapBefore: Bool
+
+    public init(d: Double, alt: Double, gapBefore: Bool = false) {
+        self.d = d
+        self.alt = alt
+        self.gapBefore = gapBefore
     }
 }
 
 /// Sesión de etapa en curso.
+///
+/// V1.1 añade pausa, tiempo en movimiento, altitud/desnivel y perfil. Todos los campos
+/// nuevos se decodifican con `decodeIfPresent`: un estado persistido de V1 se sigue leyendo.
 public struct StageSession: Codable, Equatable, Sendable {
     /// UUID v4 generado en el reloj.
     public var sessionId: String
     public var stageId: String
     public var startedAt: Date
-    /// Pasos acumulados desde `startedAt`. Nunca bajan.
+    /// Pasos acumulados desde `startedAt`. Nunca bajan (y no se pausan).
     public var steps: Int
     public var distanceMeters: Double
-    /// Último fix aceptado por el acumulador de distancia (§5).
+    /// Último fix aceptado por el acumulador de distancia (§5). `nil` tras pausar.
     public var lastFix: LocationFix?
     public var alertedPoiIds: Set<String>
     public var lastAlertAt: Date?
+
+    // MARK: V1.1
+    /// Inicio de la pausa en curso; `nil` = en marcha (§C).
+    public var pausedAt: Date?
+    /// Segundos de pausas ya cerradas.
+    public var pausedSeconds: Double
+    /// Tiempo en movimiento (§D).
+    public var movingSeconds: Double
+    /// Subida y bajada acumuladas con histéresis (§E).
+    public var ascentMeters: Double
+    public var descentMeters: Double
+    /// Altitud de referencia de la histéresis.
+    public var altitudeRef: Double?
+    /// Última altitud válida y la hora (`fix.timestamp`) en que se midió.
+    public var altitude: Double?
+    public var altitudeAt: Date?
+    /// Perfil de altitud registrado (§F).
+    public var profile: [ProfileSample]
+    /// Separación mínima actual entre muestras del perfil (se duplica al recortar).
+    public var profileSpacing: Double
 
     public init(
         sessionId: String,
@@ -117,7 +214,17 @@ public struct StageSession: Codable, Equatable, Sendable {
         distanceMeters: Double = 0,
         lastFix: LocationFix? = nil,
         alertedPoiIds: Set<String> = [],
-        lastAlertAt: Date? = nil
+        lastAlertAt: Date? = nil,
+        pausedAt: Date? = nil,
+        pausedSeconds: Double = 0,
+        movingSeconds: Double = 0,
+        ascentMeters: Double = 0,
+        descentMeters: Double = 0,
+        altitudeRef: Double? = nil,
+        altitude: Double? = nil,
+        altitudeAt: Date? = nil,
+        profile: [ProfileSample] = [],
+        profileSpacing: Double = TripMetrics.profileSpacingMeters
     ) {
         self.sessionId = sessionId
         self.stageId = stageId
@@ -127,6 +234,100 @@ public struct StageSession: Codable, Equatable, Sendable {
         self.lastFix = lastFix
         self.alertedPoiIds = alertedPoiIds
         self.lastAlertAt = lastAlertAt
+        self.pausedAt = pausedAt
+        self.pausedSeconds = pausedSeconds
+        self.movingSeconds = movingSeconds
+        self.ascentMeters = ascentMeters
+        self.descentMeters = descentMeters
+        self.altitudeRef = altitudeRef
+        self.altitude = altitude
+        self.altitudeAt = altitudeAt
+        self.profile = profile
+        self.profileSpacing = profileSpacing
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case sessionId, stageId, startedAt, steps, distanceMeters, lastFix, alertedPoiIds, lastAlertAt
+        case pausedAt, pausedSeconds, movingSeconds, ascentMeters, descentMeters
+        case altitudeRef, altitude, altitudeAt, profile, profileSpacing
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        sessionId = try c.decode(String.self, forKey: .sessionId)
+        stageId = try c.decode(String.self, forKey: .stageId)
+        startedAt = try c.decode(Date.self, forKey: .startedAt)
+        steps = try c.decode(Int.self, forKey: .steps)
+        distanceMeters = try c.decode(Double.self, forKey: .distanceMeters)
+        lastFix = try c.decodeIfPresent(LocationFix.self, forKey: .lastFix)
+        alertedPoiIds = try c.decode(Set<String>.self, forKey: .alertedPoiIds)
+        lastAlertAt = try c.decodeIfPresent(Date.self, forKey: .lastAlertAt)
+        pausedAt = try c.decodeIfPresent(Date.self, forKey: .pausedAt)
+        pausedSeconds = try c.decodeIfPresent(Double.self, forKey: .pausedSeconds) ?? 0
+        movingSeconds = try c.decodeIfPresent(Double.self, forKey: .movingSeconds) ?? 0
+        ascentMeters = try c.decodeIfPresent(Double.self, forKey: .ascentMeters) ?? 0
+        descentMeters = try c.decodeIfPresent(Double.self, forKey: .descentMeters) ?? 0
+        altitudeRef = try c.decodeIfPresent(Double.self, forKey: .altitudeRef)
+        altitude = try c.decodeIfPresent(Double.self, forKey: .altitude)
+        altitudeAt = try c.decodeIfPresent(Date.self, forKey: .altitudeAt)
+        profile = try c.decodeIfPresent([ProfileSample].self, forKey: .profile) ?? []
+        profileSpacing = try c.decodeIfPresent(Double.self, forKey: .profileSpacing) ?? TripMetrics.profileSpacingMeters
+    }
+
+    /// `true` si hay una pausa en curso.
+    public var isPaused: Bool {
+        return pausedAt != nil
+    }
+
+    /// Segundos en pausa a `now`, incluida la pausa en curso.
+    public func pausedSeconds(at now: Date) -> Double {
+        guard let since = pausedAt else {
+            return pausedSeconds
+        }
+        let open = now.timeIntervalSince(since)
+        return pausedSeconds + ((open.isFinite && open > 0) ? open : 0)
+    }
+
+    /// Altitud "antigua" (§E): sin altitud o medida hace más de 300 s.
+    public func isAltitudeStale(at now: Date) -> Bool {
+        guard altitude != nil, let at = altitudeAt else {
+            return true
+        }
+        return now.timeIntervalSince(at) > TripMetrics.altitudeStaleSeconds
+    }
+
+    /// Vista de las métricas del trayecto (§C–F) como `TripMetrics`; al asignar se copian de vuelta.
+    public var metrics: TripMetrics {
+        get {
+            return TripMetrics(
+                distanceMeters: distanceMeters,
+                movingSeconds: movingSeconds,
+                pausedAt: pausedAt,
+                pausedSeconds: pausedSeconds,
+                ascentMeters: ascentMeters,
+                descentMeters: descentMeters,
+                altitudeRef: altitudeRef,
+                altitude: altitude,
+                altitudeAt: altitudeAt,
+                lastFix: lastFix,
+                profile: profile,
+                profileSpacing: profileSpacing
+            )
+        }
+        set {
+            distanceMeters = newValue.distanceMeters
+            movingSeconds = newValue.movingSeconds
+            pausedAt = newValue.pausedAt
+            pausedSeconds = newValue.pausedSeconds
+            ascentMeters = newValue.ascentMeters
+            descentMeters = newValue.descentMeters
+            altitudeRef = newValue.altitudeRef
+            altitude = newValue.altitude
+            altitudeAt = newValue.altitudeAt
+            lastFix = newValue.lastFix
+            profile = newValue.profile
+            profileSpacing = newValue.profileSpacing
+        }
     }
 }
 
@@ -139,7 +340,15 @@ public struct SessionSummary: Codable, Equatable, Identifiable, Sendable {
     public var steps: Int
     /// Metros redondeados al entero más cercano.
     public var distanceMeters: Int
+    /// Duración total `finishedAt − startedAt` (incluye pausas).
     public var activeSeconds: Int
+    // MARK: V1.1 (enteros, redondeo half-up)
+    public var movingSeconds: Int
+    public var pausedSeconds: Int
+    public var ascentMeters: Int
+    public var descentMeters: Int
+    /// Perfil registrado. Sólo local: nunca se envía.
+    public var profile: [ProfileSample]
 
     public var id: String { sessionId }
 
@@ -150,7 +359,12 @@ public struct SessionSummary: Codable, Equatable, Identifiable, Sendable {
         finishedAt: Date,
         steps: Int,
         distanceMeters: Int,
-        activeSeconds: Int
+        activeSeconds: Int,
+        movingSeconds: Int = 0,
+        pausedSeconds: Int = 0,
+        ascentMeters: Int = 0,
+        descentMeters: Int = 0,
+        profile: [ProfileSample] = []
     ) {
         self.sessionId = sessionId
         self.stageId = stageId
@@ -159,6 +373,32 @@ public struct SessionSummary: Codable, Equatable, Identifiable, Sendable {
         self.steps = steps
         self.distanceMeters = distanceMeters
         self.activeSeconds = activeSeconds
+        self.movingSeconds = movingSeconds
+        self.pausedSeconds = pausedSeconds
+        self.ascentMeters = ascentMeters
+        self.descentMeters = descentMeters
+        self.profile = profile
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case sessionId, stageId, startedAt, finishedAt, steps, distanceMeters, activeSeconds
+        case movingSeconds, pausedSeconds, ascentMeters, descentMeters, profile
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        sessionId = try c.decode(String.self, forKey: .sessionId)
+        stageId = try c.decode(String.self, forKey: .stageId)
+        startedAt = try c.decode(Date.self, forKey: .startedAt)
+        finishedAt = try c.decode(Date.self, forKey: .finishedAt)
+        steps = try c.decode(Int.self, forKey: .steps)
+        distanceMeters = try c.decode(Int.self, forKey: .distanceMeters)
+        activeSeconds = try c.decode(Int.self, forKey: .activeSeconds)
+        movingSeconds = try c.decodeIfPresent(Int.self, forKey: .movingSeconds) ?? 0
+        pausedSeconds = try c.decodeIfPresent(Int.self, forKey: .pausedSeconds) ?? 0
+        ascentMeters = try c.decodeIfPresent(Int.self, forKey: .ascentMeters) ?? 0
+        descentMeters = try c.decodeIfPresent(Int.self, forKey: .descentMeters) ?? 0
+        profile = try c.decodeIfPresent([ProfileSample].self, forKey: .profile) ?? []
     }
 }
 
@@ -176,6 +416,11 @@ public enum SessionState: Equatable, Sendable {
 
     public var isActive: Bool {
         return activeSession != nil
+    }
+
+    /// `true` si hay sesión activa y está en pausa (V1.1 §C).
+    public var isPaused: Bool {
+        return activeSession?.isPaused ?? false
     }
 }
 
@@ -234,12 +479,26 @@ public struct CaminoTotals: Equatable, Sendable {
     public var distanceMeters: Int
     public var steps: Int
     public var activeSeconds: Int
+    public var movingSeconds: Int
+    public var ascentMeters: Int
+    public var descentMeters: Int
 
-    public init(stages: Int = 0, distanceMeters: Int = 0, steps: Int = 0, activeSeconds: Int = 0) {
+    public init(
+        stages: Int = 0,
+        distanceMeters: Int = 0,
+        steps: Int = 0,
+        activeSeconds: Int = 0,
+        movingSeconds: Int = 0,
+        ascentMeters: Int = 0,
+        descentMeters: Int = 0
+    ) {
         self.stages = stages
         self.distanceMeters = distanceMeters
         self.steps = steps
         self.activeSeconds = activeSeconds
+        self.movingSeconds = movingSeconds
+        self.ascentMeters = ascentMeters
+        self.descentMeters = descentMeters
     }
 
     public static func of(_ history: History) -> CaminoTotals {
@@ -249,6 +508,9 @@ public struct CaminoTotals: Equatable, Sendable {
             totals.distanceMeters += summary.distanceMeters
             totals.steps += summary.steps
             totals.activeSeconds += summary.activeSeconds
+            totals.movingSeconds += summary.movingSeconds
+            totals.ascentMeters += summary.ascentMeters
+            totals.descentMeters += summary.descentMeters
         }
         return totals
     }

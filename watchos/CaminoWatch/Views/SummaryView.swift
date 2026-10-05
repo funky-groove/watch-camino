@@ -88,7 +88,7 @@ struct SummaryView: View {
     private var savedText: String {
         switch model.syncStatus {
         case .synced:
-            return L10n.finishedSynced
+            return model.isDemo ? L10n.finishedSyncedDemo : L10n.finishedSynced
         case .pending, .syncing:
             return L10n.finishedWillSync
         case .offline:

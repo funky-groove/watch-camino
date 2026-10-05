@@ -116,9 +116,13 @@ final class LocationSource: NSObject, CLLocationManagerDelegate {
             guard location.horizontalAccuracy >= 0 else {
                 continue
             }
-            if let last = lastDelivered,
-               location.timestamp.timeIntervalSince(last) < LocationSource.minimumInterval {
-                continue
+            // Si el reloj ha ido hacia atrás (intervalo negativo) no se descarta: se entrega
+            // y se reinicia la referencia; si no, se perderían fixes hasta alcanzarla (V-06).
+            if let last = lastDelivered {
+                let interval = location.timestamp.timeIntervalSince(last)
+                if interval >= 0 && interval < LocationSource.minimumInterval {
+                    continue
+                }
             }
             lastDelivered = location.timestamp
             onFix?(LocationSource.makeFix(location))

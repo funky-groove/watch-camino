@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Camino Seguro Watch — app watchOS independiente (sin app iOS compañera).
 @main
+@MainActor
 struct CaminoWatchApp: App {
     @StateObject private var themeStore = ThemeStore()
     @StateObject private var model = AppModel()

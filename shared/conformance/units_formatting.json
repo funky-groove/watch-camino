@@ -1,0 +1,632 @@
+{
+  "distance": [
+    {
+      "meters": 0,
+      "units": "metric",
+      "lang": "es",
+      "text": "0 m"
+    },
+    {
+      "meters": 15,
+      "units": "metric",
+      "lang": "es",
+      "text": "20 m"
+    },
+    {
+      "meters": 160,
+      "units": "metric",
+      "lang": "es",
+      "text": "160 m"
+    },
+    {
+      "meters": 161,
+      "units": "metric",
+      "lang": "es",
+      "text": "160 m"
+    },
+    {
+      "meters": 1234,
+      "units": "metric",
+      "lang": "es",
+      "text": "1,2 km"
+    },
+    {
+      "meters": 1609.344,
+      "units": "metric",
+      "lang": "es",
+      "text": "1,6 km"
+    },
+    {
+      "meters": 9999,
+      "units": "metric",
+      "lang": "es",
+      "text": "10 km"
+    },
+    {
+      "meters": 16093.44,
+      "units": "metric",
+      "lang": "es",
+      "text": "16 km"
+    },
+    {
+      "meters": 22200,
+      "units": "metric",
+      "lang": "es",
+      "text": "22 km"
+    },
+    {
+      "meters": 123456,
+      "units": "metric",
+      "lang": "es",
+      "text": "123 km"
+    },
+    {
+      "meters": 0,
+      "units": "imperial",
+      "lang": "es",
+      "text": "0 ft"
+    },
+    {
+      "meters": 15,
+      "units": "imperial",
+      "lang": "es",
+      "text": "50 ft"
+    },
+    {
+      "meters": 160,
+      "units": "imperial",
+      "lang": "es",
+      "text": "520 ft"
+    },
+    {
+      "meters": 161,
+      "units": "imperial",
+      "lang": "es",
+      "text": "0,1 mi"
+    },
+    {
+      "meters": 1234,
+      "units": "imperial",
+      "lang": "es",
+      "text": "0,8 mi"
+    },
+    {
+      "meters": 1609.344,
+      "units": "imperial",
+      "lang": "es",
+      "text": "1,0 mi"
+    },
+    {
+      "meters": 9999,
+      "units": "imperial",
+      "lang": "es",
+      "text": "6,2 mi"
+    },
+    {
+      "meters": 16093.44,
+      "units": "imperial",
+      "lang": "es",
+      "text": "10 mi"
+    },
+    {
+      "meters": 22200,
+      "units": "imperial",
+      "lang": "es",
+      "text": "14 mi"
+    },
+    {
+      "meters": 123456,
+      "units": "imperial",
+      "lang": "es",
+      "text": "77 mi"
+    },
+    {
+      "meters": 0,
+      "units": "metric",
+      "lang": "en",
+      "text": "0 m"
+    },
+    {
+      "meters": 15,
+      "units": "metric",
+      "lang": "en",
+      "text": "20 m"
+    },
+    {
+      "meters": 160,
+      "units": "metric",
+      "lang": "en",
+      "text": "160 m"
+    },
+    {
+      "meters": 161,
+      "units": "metric",
+      "lang": "en",
+      "text": "160 m"
+    },
+    {
+      "meters": 1234,
+      "units": "metric",
+      "lang": "en",
+      "text": "1.2 km"
+    },
+    {
+      "meters": 1609.344,
+      "units": "metric",
+      "lang": "en",
+      "text": "1.6 km"
+    },
+    {
+      "meters": 9999,
+      "units": "metric",
+      "lang": "en",
+      "text": "10 km"
+    },
+    {
+      "meters": 16093.44,
+      "units": "metric",
+      "lang": "en",
+      "text": "16 km"
+    },
+    {
+      "meters": 22200,
+      "units": "metric",
+      "lang": "en",
+      "text": "22 km"
+    },
+    {
+      "meters": 123456,
+      "units": "metric",
+      "lang": "en",
+      "text": "123 km"
+    },
+    {
+      "meters": 0,
+      "units": "imperial",
+      "lang": "en",
+      "text": "0 ft"
+    },
+    {
+      "meters": 15,
+      "units": "imperial",
+      "lang": "en",
+      "text": "50 ft"
+    },
+    {
+      "meters": 160,
+      "units": "imperial",
+      "lang": "en",
+      "text": "520 ft"
+    },
+    {
+      "meters": 161,
+      "units": "imperial",
+      "lang": "en",
+      "text": "0.1 mi"
+    },
+    {
+      "meters": 1234,
+      "units": "imperial",
+      "lang": "en",
+      "text": "0.8 mi"
+    },
+    {
+      "meters": 1609.344,
+      "units": "imperial",
+      "lang": "en",
+      "text": "1.0 mi"
+    },
+    {
+      "meters": 9999,
+      "units": "imperial",
+      "lang": "en",
+      "text": "6.2 mi"
+    },
+    {
+      "meters": 16093.44,
+      "units": "imperial",
+      "lang": "en",
+      "text": "10 mi"
+    },
+    {
+      "meters": 22200,
+      "units": "imperial",
+      "lang": "en",
+      "text": "14 mi"
+    },
+    {
+      "meters": 123456,
+      "units": "imperial",
+      "lang": "en",
+      "text": "77 mi"
+    }
+  ],
+  "elevation": [
+    {
+      "meters": 0,
+      "units": "metric",
+      "text": "0 m"
+    },
+    {
+      "meters": 0.4,
+      "units": "metric",
+      "text": "0 m"
+    },
+    {
+      "meters": 0.5,
+      "units": "metric",
+      "text": "1 m"
+    },
+    {
+      "meters": 12.6,
+      "units": "metric",
+      "text": "13 m"
+    },
+    {
+      "meters": -3.5,
+      "units": "metric",
+      "text": "-4 m"
+    },
+    {
+      "meters": 812.3,
+      "units": "metric",
+      "text": "812 m"
+    },
+    {
+      "meters": 0,
+      "units": "imperial",
+      "text": "0 ft"
+    },
+    {
+      "meters": 0.4,
+      "units": "imperial",
+      "text": "1 ft"
+    },
+    {
+      "meters": 0.5,
+      "units": "imperial",
+      "text": "2 ft"
+    },
+    {
+      "meters": 12.6,
+      "units": "imperial",
+      "text": "41 ft"
+    },
+    {
+      "meters": -3.5,
+      "units": "imperial",
+      "text": "-11 ft"
+    },
+    {
+      "meters": 812.3,
+      "units": "imperial",
+      "text": "2665 ft"
+    }
+  ],
+  "steps": [
+    {
+      "steps": 0,
+      "lang": "es",
+      "text": "0"
+    },
+    {
+      "steps": 999,
+      "lang": "es",
+      "text": "999"
+    },
+    {
+      "steps": 1234,
+      "lang": "es",
+      "text": "1.234"
+    },
+    {
+      "steps": 1234567,
+      "lang": "es",
+      "text": "1.234.567"
+    },
+    {
+      "steps": 0,
+      "lang": "en",
+      "text": "0"
+    },
+    {
+      "steps": 999,
+      "lang": "en",
+      "text": "999"
+    },
+    {
+      "steps": 1234,
+      "lang": "en",
+      "text": "1,234"
+    },
+    {
+      "steps": 1234567,
+      "lang": "en",
+      "text": "1,234,567"
+    }
+  ],
+  "pace": [
+    {
+      "distanceM": 0,
+      "movingS": 0,
+      "units": "metric",
+      "text": null
+    },
+    {
+      "distanceM": 99,
+      "movingS": 600,
+      "units": "metric",
+      "text": null
+    },
+    {
+      "distanceM": 1000,
+      "movingS": 59,
+      "units": "metric",
+      "text": null
+    },
+    {
+      "distanceM": 1000,
+      "movingS": 600,
+      "units": "metric",
+      "text": "10:00 /km"
+    },
+    {
+      "distanceM": 4200,
+      "movingS": 3000,
+      "units": "metric",
+      "text": "11:54 /km"
+    },
+    {
+      "distanceM": 22200,
+      "movingS": 18000,
+      "units": "metric",
+      "text": "13:31 /km"
+    },
+    {
+      "distanceM": 150,
+      "movingS": 59000,
+      "units": "metric",
+      "text": null
+    },
+    {
+      "distanceM": 0,
+      "movingS": 0,
+      "units": "imperial",
+      "text": null
+    },
+    {
+      "distanceM": 99,
+      "movingS": 600,
+      "units": "imperial",
+      "text": null
+    },
+    {
+      "distanceM": 1000,
+      "movingS": 59,
+      "units": "imperial",
+      "text": null
+    },
+    {
+      "distanceM": 1000,
+      "movingS": 600,
+      "units": "imperial",
+      "text": "16:06 /mi"
+    },
+    {
+      "distanceM": 4200,
+      "movingS": 3000,
+      "units": "imperial",
+      "text": "19:10 /mi"
+    },
+    {
+      "distanceM": 22200,
+      "movingS": 18000,
+      "units": "imperial",
+      "text": "21:45 /mi"
+    },
+    {
+      "distanceM": 150,
+      "movingS": 59000,
+      "units": "imperial",
+      "text": null
+    }
+  ],
+  "speed": [
+    {
+      "distanceM": 0,
+      "movingS": 0,
+      "units": "metric",
+      "lang": "es",
+      "text": null
+    },
+    {
+      "distanceM": 0,
+      "movingS": 0,
+      "units": "metric",
+      "lang": "en",
+      "text": null
+    },
+    {
+      "distanceM": 99,
+      "movingS": 600,
+      "units": "metric",
+      "lang": "es",
+      "text": null
+    },
+    {
+      "distanceM": 99,
+      "movingS": 600,
+      "units": "metric",
+      "lang": "en",
+      "text": null
+    },
+    {
+      "distanceM": 1000,
+      "movingS": 59,
+      "units": "metric",
+      "lang": "es",
+      "text": null
+    },
+    {
+      "distanceM": 1000,
+      "movingS": 59,
+      "units": "metric",
+      "lang": "en",
+      "text": null
+    },
+    {
+      "distanceM": 1000,
+      "movingS": 600,
+      "units": "metric",
+      "lang": "es",
+      "text": "6,0 km/h"
+    },
+    {
+      "distanceM": 1000,
+      "movingS": 600,
+      "units": "metric",
+      "lang": "en",
+      "text": "6.0 km/h"
+    },
+    {
+      "distanceM": 4200,
+      "movingS": 3000,
+      "units": "metric",
+      "lang": "es",
+      "text": "5,0 km/h"
+    },
+    {
+      "distanceM": 4200,
+      "movingS": 3000,
+      "units": "metric",
+      "lang": "en",
+      "text": "5.0 km/h"
+    },
+    {
+      "distanceM": 22200,
+      "movingS": 18000,
+      "units": "metric",
+      "lang": "es",
+      "text": "4,4 km/h"
+    },
+    {
+      "distanceM": 22200,
+      "movingS": 18000,
+      "units": "metric",
+      "lang": "en",
+      "text": "4.4 km/h"
+    },
+    {
+      "distanceM": 150,
+      "movingS": 59000,
+      "units": "metric",
+      "lang": "es",
+      "text": "0,0 km/h"
+    },
+    {
+      "distanceM": 150,
+      "movingS": 59000,
+      "units": "metric",
+      "lang": "en",
+      "text": "0.0 km/h"
+    },
+    {
+      "distanceM": 0,
+      "movingS": 0,
+      "units": "imperial",
+      "lang": "es",
+      "text": null
+    },
+    {
+      "distanceM": 0,
+      "movingS": 0,
+      "units": "imperial",
+      "lang": "en",
+      "text": null
+    },
+    {
+      "distanceM": 99,
+      "movingS": 600,
+      "units": "imperial",
+      "lang": "es",
+      "text": null
+    },
+    {
+      "distanceM": 99,
+      "movingS": 600,
+      "units": "imperial",
+      "lang": "en",
+      "text": null
+    },
+    {
+      "distanceM": 1000,
+      "movingS": 59,
+      "units": "imperial",
+      "lang": "es",
+      "text": null
+    },
+    {
+      "distanceM": 1000,
+      "movingS": 59,
+      "units": "imperial",
+      "lang": "en",
+      "text": null
+    },
+    {
+      "distanceM": 1000,
+      "movingS": 600,
+      "units": "imperial",
+      "lang": "es",
+      "text": "3,7 mph"
+    },
+    {
+      "distanceM": 1000,
+      "movingS": 600,
+      "units": "imperial",
+      "lang": "en",
+      "text": "3.7 mph"
+    },
+    {
+      "distanceM": 4200,
+      "movingS": 3000,
+      "units": "imperial",
+      "lang": "es",
+      "text": "3,1 mph"
+    },
+    {
+      "distanceM": 4200,
+      "movingS": 3000,
+      "units": "imperial",
+      "lang": "en",
+      "text": "3.1 mph"
+    },
+    {
+      "distanceM": 22200,
+      "movingS": 18000,
+      "units": "imperial",
+      "lang": "es",
+      "text": "2,8 mph"
+    },
+    {
+      "distanceM": 22200,
+      "movingS": 18000,
+      "units": "imperial",
+      "lang": "en",
+      "text": "2.8 mph"
+    },
+    {
+      "distanceM": 150,
+      "movingS": 59000,
+      "units": "imperial",
+      "lang": "es",
+      "text": "0,0 mph"
+    },
+    {
+      "distanceM": 150,
+      "movingS": 59000,
+      "units": "imperial",
+      "lang": "en",
+      "text": "0.0 mph"
+    }
+  ]
+}

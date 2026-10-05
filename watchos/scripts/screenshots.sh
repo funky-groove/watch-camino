@@ -8,7 +8,10 @@
 #    y uno GRANDE (Ultra o 49/46/45 mm) del runtime watchOS más reciente (≥ 10).
 # 3. Por cada tema (negro, perla) y pantalla lanza la app con argumentos de escenario
 #    (DemoScenario: datos DEMO en memoria, nunca el almacenamiento real) y captura.
-# 4. En el pequeño, además, texto grande (accessibility-large) en inicio activo y estadísticas.
+# 4. En el pequeño, además, texto grande (accessibility-large) en inicio activo y estadísticas,
+#    y una pasada en inglés (-AppleLanguages "(en)" -AppleLocale en_US) de inicio activo y SOS.
+#    La pantalla SOS usa SIEMPRE el marcador simulado (MockEmergencyDialer, por -demo.scenario):
+#    no se abre ninguna llamada; además las capturas no pulsan nada.
 # 5. Escribe out/index.md, out/contact_sheet.png (si hay Pillow) y vuelca en el log las
 #    imágenes en base64 entre marcadores BEGIN_CONTACT_SHEET/END_CONTACT_SHEET y
 #    BEGIN_PNG <nombre>/END_PNG.
@@ -35,9 +38,12 @@ die() { printf '[screenshots] ERROR: %s\n' "$*" >&2; exit 1; }
 command -v xcrun >/dev/null || die "xcrun no disponible (hace falta macOS + Xcode)"
 command -v python3 >/dev/null || die "python3 no disponible"
 
-# Pantallas: nombre|escenario|ruta (ruta vacía = pantalla principal).
+# Pantallas: nombre|escenario|ruta|argumentos extra (ruta vacía = pantalla principal).
 SCREENS=(
   "inicio-activo|active|"
+  "inicio-activo-final|active||-demo.scrollToEnd YES"
+  "sos|active|sos"
+  "sos-sin-trayecto|idle|sos"
   "inicio-idle|idle|"
   "estadisticas|active|stats"
   "detalle-distancia|active|stat-distance"
@@ -53,7 +59,14 @@ THEMES=(negro perla)
 LARGE_TEXT_SCREENS=(
   "inicio-activo|active|"
   "estadisticas|active|stats"
+  "sos|active|sos"
 )
+# Pasada en inglés (sólo en el reloj pequeño).
+ENGLISH_SCREENS=(
+  "inicio-activo|active|"
+  "sos|active|sos"
+)
+ENGLISH_ARGS='-AppleLanguages (en) -AppleLocale en_US'
 
 # Posición simulada coherente con cada escenario (por si la app pide una lectura real).
 scenario_location() {
@@ -195,11 +208,16 @@ prepare_sim() {  # $1 = devicetype id, $2 = nombre; deja el UDID en PREP_UDID
   return 0
 }
 
-capture() {  # $1 udid, $2 device slug, $3 device name, $4 tema, $5 pantalla, $6 escenario, $7 ruta, $8 sufijo
-  local udid="$1" dslug="$2" dname="$3" theme="$4" screen="$5" scenario="$6" route="$7" suffix="$8"
+capture() {  # $1 udid, $2 device slug, $3 device name, $4 tema, $5 pantalla, $6 escenario, $7 ruta, $8 sufijo, $9 args extra
+  local udid="$1" dslug="$2" dname="$3" theme="$4" screen="$5" scenario="$6" route="$7" suffix="$8" extra="${9:-}"
   local name="${dslug}_${theme}_${screen}${suffix}.png"
   local args=(-settings.theme "$theme" -demo.scenario "$scenario")
   [ -n "$route" ] && args+=(-demo.route "$route")
+  if [ -n "$extra" ]; then
+    local extra_args=()
+    read -r -a extra_args <<<"$extra"
+    args+=("${extra_args[@]}")
+  fi
   xcrun simctl location "$udid" set "$(scenario_location "$scenario")" >/dev/null 2>&1 || true
   if ! xcrun simctl launch --terminate-running-process "$udid" "$BUNDLE_ID" "${args[@]}" >/dev/null 2>&1; then
     warn "launch falló: $name"
@@ -227,11 +245,11 @@ run_device() {  # $1 devicetype, $2 nombre, $3 = "small" | "large"
   fi
   udid="$PREP_UDID"
   log "Simulador $2 → $udid"
-  local theme entry screen scenario route
+  local theme entry screen scenario route extra
   for theme in "${THEMES[@]}"; do
     for entry in "${SCREENS[@]}"; do
-      IFS='|' read -r screen scenario route <<<"$entry"
-      capture "$udid" "$dslug" "$2" "$theme" "$screen" "$scenario" "$route" ""
+      IFS='|' read -r screen scenario route extra <<<"$entry"
+      capture "$udid" "$dslug" "$2" "$theme" "$screen" "$scenario" "$route" "" "$extra"
     done
   done
   if [ "$3" = "small" ]; then
@@ -247,6 +265,13 @@ run_device() {  # $1 devicetype, $2 nombre, $3 = "small" | "large"
     else
       warn "simctl ui content_size no soportado en $2; se omiten capturas de texto grande"
     fi
+    log "Pasada en inglés en $2"
+    for theme in "${THEMES[@]}"; do
+      for entry in "${ENGLISH_SCREENS[@]}"; do
+        IFS='|' read -r screen scenario route <<<"$entry"
+        capture "$udid" "$dslug" "$2" "$theme" "$screen" "$scenario" "$route" "_en" "$ENGLISH_ARGS"
+      done
+    done
   fi
   xcrun simctl terminate "$udid" "$BUNDLE_ID" >/dev/null 2>&1 || true
 }

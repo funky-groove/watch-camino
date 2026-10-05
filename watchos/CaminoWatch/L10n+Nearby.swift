@@ -43,35 +43,38 @@ extension L10n {
     static var nearbyLocationStale: String { tr("nearby.location.stale", "ubicación antigua") }
 
     static func nearbyLocationAccuracy(_ meters: Int) -> String {
-        return format("nearby.location.accuracy", "ubicación ±%d m", meters)
+        return format("nearby.location.accuracy", "ubicación ±%ld m", meters)
     }
 
     static func nearbyLocationImprecise(_ meters: Int) -> String {
-        return format("nearby.location.imprecise", "ubicación imprecisa ±%d m", meters)
+        return format("nearby.location.imprecise", "ubicación imprecisa ±%ld m", meters)
     }
 
     static var nearbyAgeNow: String { tr("nearby.age.now", "hace menos de 1 min") }
 
     static func nearbyAgeMinutes(_ minutes: Int) -> String {
-        return format("nearby.age.minutes", "hace %d min", minutes)
+        return format("nearby.age.minutes", "hace %ld min", minutes)
     }
 
     static func nearbyAgeHours(_ hours: Int) -> String {
-        return format("nearby.age.hours", "hace %d h", hours)
+        return format("nearby.age.hours", "hace %ld h", hours)
     }
 
     // Variantes habladas (VoiceOver no lee "±" ni "min" de forma natural).
 
     static func nearbySpokenAccuracy(_ meters: Int) -> String {
-        return format("nearby.a11y.accuracy", "ubicación con precisión de %d metros", meters)
+        return format("nearby.a11y.accuracy", "ubicación con precisión de %ld metros", meters)
     }
 
     static func nearbySpokenImprecise(_ meters: Int) -> String {
-        return format("nearby.a11y.imprecise", "ubicación imprecisa, precisión de %d metros", meters)
+        return format("nearby.a11y.imprecise", "ubicación imprecisa, precisión de %ld metros", meters)
     }
 
     static var nearbySpokenAgeNow: String { tr("nearby.a11y.age.now", "hace menos de un minuto") }
-    static var nearbySpokenAgoPrefix: String { tr("nearby.a11y.ago", "hace") }
+    /// "hace 3 minutos" (el orden cambia con el idioma: "3 minutes ago").
+    static func nearbySpokenAgo(_ duration: String) -> String {
+        return stageFill(tr("nearby.a11y.ago", "hace %@"), duration)
+    }
 
     // MARK: Ficha de lugar
 
@@ -98,17 +101,17 @@ extension L10n {
     }
     static var settingsSyncRow: String { tr("settings.sync", "sincronización") }
     static var settingsSosInfo: String {
-        tr("settings.sos", "en una emergencia usa el SOS del reloj: mantén pulsado el botón lateral")
+        tr("settings.sos", "en una emergencia: botón SOS de la pantalla principal, o SOS del reloj manteniendo pulsado el botón lateral")
     }
 
     // MARK: Sincronización (pantalla)
 
     static var sync2Title: String { tr("sync2.title", "sincronización") }
     static var sync2Now: String { tr("sync2.now", "sincronizar ahora") }
-    static var sync2Synced: String { tr("sync2.synced.explain", "todo guardado en el servidor") }
+    static var sync2Synced: String { tr("sync2.synced.explain", "registros enviados al servidor") }
     static var sync2Demo: String { tr("sync2.demo.explain", "servidor de demostración: no se envía nada") }
     static var sync2Blocked: String {
-        tr("sync2.blocked.explain", "tus etapas se guardan en el reloj; se enviarán cuando el servicio esté disponible")
+        tr("sync2.blocked.explain", "guardado en el reloj · envío pendiente de backend: todavía no hay servidor, no se envía nada")
     }
     static var sync2NeedsLink: String {
         tr("sync2.needsLink.explain", "hay que vincular el reloj con tu cuenta (próximamente)")
@@ -125,13 +128,13 @@ extension L10n {
         if count == 1 {
             return tr("sync2.pending.one", "1 registro guardado en el reloj")
         }
-        return format("sync2.pending.many", "%d registros guardados en el reloj", count)
+        return format("sync2.pending.many", "%ld registros guardados en el reloj", count)
     }
 
     static func sync2DeadLetters(_ count: Int) -> String {
         if count == 1 {
             return tr("sync2.deadLetters.one", "1 registro rechazado")
         }
-        return format("sync2.deadLetters.many", "%d registros rechazados", count)
+        return format("sync2.deadLetters.many", "%ld registros rechazados", count)
     }
 }

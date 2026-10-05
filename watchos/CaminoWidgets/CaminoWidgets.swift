@@ -332,6 +332,7 @@ extension WidgetSnapshot {
 
 // MARK: - Previews (datos de demostración)
 
+#if DEBUG
 #Preview("Rectangular", as: .accessoryRectangular) {
     CaminoStageWidget()
 } timeline: {
@@ -360,3 +361,4 @@ extension WidgetSnapshot {
     CaminoEntry(date: .now, snapshot: .demoActive)
     CaminoEntry(date: .now, snapshot: .demoIdle)
 }
+#endif

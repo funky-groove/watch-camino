@@ -9,7 +9,9 @@ public enum SyncEventType: String, Codable, Sendable {
 }
 
 /// `stage_started.payload  = { stageId, startedAt }`
-/// `stage_finished.payload = { stageId, startedAt, finishedAt, steps, distanceMeters, activeSeconds }`
+/// `stage_finished.payload = { stageId, startedAt, finishedAt, steps, distanceMeters, activeSeconds,
+///                            movingSeconds, pausedSeconds, ascentMeters, descentMeters }` (V1.1 §C).
+/// Nunca lleva el perfil ni posiciones. Los campos V1.1 son opcionales: eventos V1 encolados se siguen leyendo.
 public struct SyncPayload: Codable, Equatable, Sendable {
     public var stageId: String
     public var startedAt: Date
@@ -17,6 +19,10 @@ public struct SyncPayload: Codable, Equatable, Sendable {
     public var steps: Int?
     public var distanceMeters: Int?
     public var activeSeconds: Int?
+    public var movingSeconds: Int?
+    public var pausedSeconds: Int?
+    public var ascentMeters: Int?
+    public var descentMeters: Int?
 
     public init(
         stageId: String,
@@ -24,7 +30,11 @@ public struct SyncPayload: Codable, Equatable, Sendable {
         finishedAt: Date? = nil,
         steps: Int? = nil,
         distanceMeters: Int? = nil,
-        activeSeconds: Int? = nil
+        activeSeconds: Int? = nil,
+        movingSeconds: Int? = nil,
+        pausedSeconds: Int? = nil,
+        ascentMeters: Int? = nil,
+        descentMeters: Int? = nil
     ) {
         self.stageId = stageId
         self.startedAt = startedAt
@@ -32,6 +42,10 @@ public struct SyncPayload: Codable, Equatable, Sendable {
         self.steps = steps
         self.distanceMeters = distanceMeters
         self.activeSeconds = activeSeconds
+        self.movingSeconds = movingSeconds
+        self.pausedSeconds = pausedSeconds
+        self.ascentMeters = ascentMeters
+        self.descentMeters = descentMeters
     }
 
     public static func started(stageId: String, startedAt: Date) -> SyncPayload {
@@ -45,7 +59,11 @@ public struct SyncPayload: Codable, Equatable, Sendable {
             finishedAt: summary.finishedAt,
             steps: summary.steps,
             distanceMeters: summary.distanceMeters,
-            activeSeconds: summary.activeSeconds
+            activeSeconds: summary.activeSeconds,
+            movingSeconds: summary.movingSeconds,
+            pausedSeconds: summary.pausedSeconds,
+            ascentMeters: summary.ascentMeters,
+            descentMeters: summary.descentMeters
         )
     }
 }

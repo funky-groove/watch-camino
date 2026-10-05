@@ -23,6 +23,8 @@ enum Icon {
     static let info = "info.circle"
     static let chevron = "chevron.right"
     static let theme = "circle.lefthalf.filled"
+    static let phone = "phone"
+    static let satellite = "antenna.radiowaves.left.and.right"
 
     static func category(_ category: PoiCategory) -> String {
         switch category {

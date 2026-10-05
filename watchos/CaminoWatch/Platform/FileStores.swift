@@ -24,21 +24,36 @@ enum StorageLocation {
     }
 }
 
+/// No se pudo apartar un fichero ilegible: no se escribe para no destruirlo.
+struct UnreadableFileGuardError: Error {}
+
 /// Lectura/escritura atómica de un valor `Codable` en un fichero JSON.
 final class JSONFileStorage<Value: Codable> {
     let url: URL
+    /// `true` si la lectura falló y el fichero no se pudo apartar: escribir lo destruiría.
+    private var mustNotOverwrite = false
 
     init(url: URL) {
         self.url = url
     }
 
-    /// `nil` si el fichero no existe. Si está corrupto, se aparta (`.corrupt-<t>.json`)
-    /// para no sobrescribirlo a ciegas, y se propaga el error.
+    /// `nil` si el fichero no existe. Si existe pero no se puede leer (permiso, protección
+    /// de datos, E/S…) o está corrupto, se aparta (`.corrupt-<t>.json`) ANTES de cualquier
+    /// escritura, para no sobrescribir el fichero bueno, y se propaga el error (V-03).
     func read() throws -> Value? {
         guard FileManager.default.fileExists(atPath: url.path) else {
             return nil
         }
-        let data = try Data(contentsOf: url)
+        let data: Data
+        do {
+            data = try Data(contentsOf: url)
+        } catch {
+            if JSONFileStorage.isNotFound(error) {
+                return nil
+            }
+            quarantine()
+            throw error
+        }
         do {
             return try CaminoJSON.decoder().decode(Value.self, from: data)
         } catch {
@@ -48,16 +63,40 @@ final class JSONFileStorage<Value: Codable> {
     }
 
     func write(_ value: Value) throws {
+        if mustNotOverwrite {
+            // Se reintenta apartarlo; si sigue sin poder, no se escribe.
+            quarantine()
+            if mustNotOverwrite {
+                throw UnreadableFileGuardError()
+            }
+        }
         let data = try CaminoJSON.encoder().encode(value)
         try data.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
     }
 
     private func quarantine() {
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            mustNotOverwrite = false
+            return
+        }
         let stamp = Int(Date().timeIntervalSince1970)
         let base = url.deletingPathExtension().lastPathComponent
         let destination = url.deletingLastPathComponent()
             .appendingPathComponent("\(base).corrupt-\(stamp).json")
-        try? FileManager.default.moveItem(at: url, to: destination)
+        do {
+            try FileManager.default.moveItem(at: url, to: destination)
+            mustNotOverwrite = false
+        } catch {
+            mustNotOverwrite = true
+        }
+    }
+
+    private static func isNotFound(_ error: Error) -> Bool {
+        if let cocoa = error as? CocoaError, cocoa.code == .fileReadNoSuchFile || cocoa.code == .fileNoSuchFile {
+            return true
+        }
+        let ns = error as NSError
+        return ns.domain == NSPOSIXErrorDomain && ns.code == Int(ENOENT)
     }
 }
 

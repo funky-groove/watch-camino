@@ -71,6 +71,8 @@ struct RootView: View {
             SettingsView()
         case .sync:
             SyncView()
+        case .sos:
+            SOSView()
         }
     }
 }

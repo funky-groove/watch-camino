@@ -35,6 +35,9 @@ enum L10n {
 
     static var syncTitle: String { tr("sync.title", "Sincronización") }
     static var syncSynced: String { tr("sync.synced", "Sincronizado") }
+    static var syncSyncedDemo: String { tr("sync.synced.demo", "Servidor de demostración") }
+    /// Fila de "Mi etapa" sin servidor (Release): nada se ha enviado.
+    static var syncBlockedRow: String { tr("sync.blocked.row", "guardado en el reloj · envío pendiente de backend") }
     static var syncOffline: String { tr("sync.offline", "Sin conexión") }
     static var syncBlocked: String { tr("sync.blocked", "Pendiente de backend") }
     static var syncNeedsLink: String { tr("sync.needsLink", "Necesita vincular") }
@@ -52,27 +55,30 @@ enum L10n {
         if count == 1 {
             return tr("sync.pending.one", "1 pendiente")
         }
-        return format("sync.pending.many", "%d pendientes", count)
+        return format("sync.pending.many", "%ld pendientes", count)
     }
 
     static func syncSavedEvents(_ count: Int) -> String {
         if count == 1 {
             return tr("sync.saved.one", "1 evento guardado en el reloj")
         }
-        return format("sync.saved.many", "%d eventos guardados en el reloj", count)
+        return format("sync.saved.many", "%ld eventos guardados en el reloj", count)
     }
 
     static func syncDeadLetters(_ count: Int) -> String {
         if count == 1 {
             return tr("sync.deadLetters.one", "1 evento rechazado")
         }
-        return format("sync.deadLetters.many", "%d eventos rechazados", count)
+        return format("sync.deadLetters.many", "%ld eventos rechazados", count)
     }
 
     // MARK: Errores
 
-    static var errorStart: String { tr("error.start", "No se pudo comenzar la etapa.") }
-    static var errorFinish: String { tr("error.finish", "No se pudo finalizar la etapa.") }
+    static var errorStart: String { tr("error.start", "No se pudo iniciar el trayecto.") }
+    static var errorFinish: String { tr("error.finish", "No se pudo finalizar el trayecto.") }
+    static var errorRecover: String {
+        tr("error.recover", "No se pudo recuperar la etapa anterior. Se ha guardado una copia en el reloj.")
+    }
     static var errorStorage: String { tr("error.storage", "No se pudo guardar en el reloj. Los datos siguen en memoria.") }
 
     // MARK: Notificaciones
@@ -89,14 +95,14 @@ enum L10n {
         if count == 1 {
             return tr("a11y.hours.one", "1 hora")
         }
-        return format("a11y.hours.many", "%d horas", count)
+        return format("a11y.hours.many", "%ld horas", count)
     }
 
     static func spokenMinutes(_ count: Int) -> String {
         if count == 1 {
             return tr("a11y.minutes.one", "1 minuto")
         }
-        return format("a11y.minutes.many", "%d minutos", count)
+        return format("a11y.minutes.many", "%ld minutos", count)
     }
 
     // MARK: Sistema de diseño y POI

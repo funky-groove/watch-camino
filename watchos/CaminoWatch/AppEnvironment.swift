@@ -10,6 +10,8 @@ enum AppEnvironment {
     struct Dependencies {
         let controller: CaminoController
         let credentials: any CredentialStore
+        /// Llamada de emergencia: sistema (`tel:`) o simulada en escenarios DEMO.
+        let dialer: any EmergencyDialer
     }
 
     static func make() -> Dependencies {
@@ -51,7 +53,8 @@ enum AppEnvironment {
         }
         return Dependencies(
             controller: controller,
-            credentials: KeychainCredentialStore()
+            credentials: KeychainCredentialStore(),
+            dialer: SystemEmergencyDialer()
         )
     }
 
@@ -108,8 +111,8 @@ extension AppEnvironment {
     /// Reloj del escenario en curso; `nil` fuera de escenarios (almacenamiento real).
     static var demoClock: DemoOffsetClock?
 
-    /// Dependencias para escenarios: almacenes EN MEMORIA, reloj desplazable y
-    /// credenciales en memoria. No lee ni escribe el directorio de la app ni el llavero.
+    /// Dependencias para escenarios: almacenes EN MEMORIA, reloj desplazable,
+    /// credenciales en memoria y marcador de emergencia simulado. No lee ni escribe el directorio de la app ni el llavero.
     static func makeDemo(catalog: FixtureStageCatalog, pois: FixturePoiSource, api: any CaminoApi) -> Dependencies {
         let clock = DemoOffsetClock()
         demoClock = clock
@@ -123,9 +126,11 @@ extension AppEnvironment {
             ids: SystemIdGenerator()
         )
         Log.app.info("Entorno de escenario demo: persistencia en memoria")
+        // Escenarios DEMO y capturas: nunca se abre una llamada real.
         return Dependencies(
             controller: controller,
-            credentials: InMemoryCredentialStore()
+            credentials: InMemoryCredentialStore(),
+            dialer: MockEmergencyDialer()
         )
     }
 }

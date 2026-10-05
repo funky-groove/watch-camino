@@ -268,6 +268,54 @@ struct SecondaryButtonStyle: ButtonStyle {
     }
 }
 
+/// Botón «SOS» de la cabecera: compacto a la vista (texto rojo con contorno rojo sobre el
+/// fondo, pares verificados en `ContrastTests`), pero con objetivo táctil ≥ 44×44 pt.
+/// Forma de cápsula pequeña: no se confunde con «Finalizar trayecto» (ancho completo, neutro,
+/// al final del contenido).
+struct SOSButtonStyle: ButtonStyle {
+    @Environment(\.palette) private var palette
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .typeStyle(.sectionLabel)
+            .foregroundStyle(palette.critical)
+            .fixedSize()
+            .padding(.horizontal, Spacing.s)
+            .padding(.vertical, Spacing.xs)
+            .background(
+                Capsule().fill(configuration.isPressed ? palette.surfaceRaised : palette.background)
+            )
+            .overlay(
+                Capsule().strokeBorder(palette.critical, lineWidth: Stroke.control)
+            )
+            .frame(minWidth: Target.minimumHeight, minHeight: Target.minimumHeight)
+            .contentShape(Rectangle())
+    }
+}
+
+/// Acción de emergencia («Llamar al 112»): relleno rojo sobrio con texto en contraste
+/// (par «texto de acción de emergencia» en `ContrastTests`), alto ≥ 52 pt.
+struct EmergencyCallButtonStyle: ButtonStyle {
+    @Environment(\.palette) private var palette
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .typeStyle(.title)
+            .multilineTextAlignment(.center)
+            .foregroundStyle(palette.actionPrimaryText)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, minHeight: Target.primaryHeight)
+            .padding(.horizontal, Spacing.s)
+            .background(
+                RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
+                    .fill(palette.critical)
+            )
+            .opacity(configuration.isPressed ? 0.75 : (isEnabled ? 1 : 0.4))
+            .contentShape(RoundedRectangle(cornerRadius: Radius.control, style: .continuous))
+    }
+}
+
 /// Fila pulsable sin estilo de botón del sistema (para NavigationLink y Button con RowLabel).
 struct RowButtonStyle: ButtonStyle {
     @Environment(\.palette) private var palette
@@ -290,10 +338,12 @@ struct RowButtonStyle: ButtonStyle {
 
 /// Textos y símbolos del estado de sincronización.
 enum SyncText {
-    static func status(_ status: SyncStatus) -> String {
+    /// - Parameter isDemo: con `MockCaminoApi` nunca se dice "sincronizado" a secas:
+    ///   el servidor es de demostración.
+    static func status(_ status: SyncStatus, isDemo: Bool = false) -> String {
         switch status {
         case .synced:
-            return L10n.syncSynced
+            return isDemo ? L10n.syncSyncedDemo : L10n.syncSynced
         case .pending(let count):
             return L10n.syncPending(count)
         case .offline:

@@ -93,7 +93,13 @@ Cuando llegue el contrato se añade un `HttpCaminoApi` que implemente `CaminoApi
 
 ## Comportamiento en el reloj
 
-- Permisos (ubicación, movimiento, notificaciones) se piden al pulsar **"Comenzar etapa"**, no al abrir.
+- Permisos (ubicación, movimiento, notificaciones) se piden al pulsar **«Iniciar trayecto»**, no al abrir.
+- SOS (spec §10.1): botón «SOS» en la cabecera → pantalla `SOSView` con «Llamar al 112»
+  (`SystemEmergencyDialer` → `WKApplication.shared().openSystemURL(tel:112)`, con confirmación del sistema).
+  Los escenarios DEMO (`-demo.scenario`, `-demo.route sos`) usan `MockEmergencyDialer`: no abren nada.
+  Verificación por nivel (tests / simulador / hardware): `docs/accessibility/SOS_CAPABILITY_MATRIX.md`.
+- Idiomas: español (base) e inglés. `python3 tools/gen_strings.py` genera `es.lproj` (desde el código) y
+  `en.lproj` (desde `tools/strings_en.json`); `--check` falla si falta una clave en inglés.
 - Sensores sólo con etapa activa. Ubicación: `kCLLocationAccuracyNearestTenMeters`, `distanceFilter` 20 m,
   intervalo mínimo 10 s, `allowsBackgroundLocationUpdates` sólo mientras hay etapa (background mode `location`).
 - Pasos: `CMPedometer.startUpdates(from: startedAt)`. Tras relanzar se vuelve a consultar desde `startedAt`.

@@ -165,6 +165,14 @@ public struct ContrastRequirement {
         list.append(ContrastRequirement(
             name: "acción principal sobre fondo", kind: .nonText,
             foreground: \Palette.actionPrimaryFill, background: \Palette.background))
+        // Acción de emergencia ("Llamar al 112"): relleno `critical` con el texto de acción
+        // principal, que se invierte por tema (oscuro en Negro, claro en Perla).
+        list.append(ContrastRequirement(
+            name: "texto de acción de emergencia", kind: .text,
+            foreground: \Palette.actionPrimaryText, background: \Palette.critical))
+        list.append(ContrastRequirement(
+            name: "acción de emergencia sobre fondo", kind: .nonText,
+            foreground: \Palette.critical, background: \Palette.background))
         list.append(ContrastRequirement(
             name: "contorno de control sobre fondo", kind: .nonText,
             foreground: \Palette.controlOutline, background: \Palette.background))

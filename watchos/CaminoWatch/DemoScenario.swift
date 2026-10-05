@@ -9,14 +9,22 @@ import CaminoCore
 /// dominio de argumentos, que es volátil y no se guarda):
 ///
 ///     -demo.scenario idle|active|nearby|alert|finished
-///     -demo.route    stats|stat-distance|nearby|nearby-water|poi-p01|settings|sync|picker
+///     -demo.route    stats|stat-distance|nearby|nearby-water|poi-p01|settings|sync|picker|sos
+///     -demo.scrollToEnd YES   (pantalla principal desplazada hasta «Finalizar trayecto»)
 ///
 /// Con `-demo.scenario`, `AppEnvironment` usa almacenes EN MEMORIA y un reloj desplazable
 /// (`DemoOffsetClock`): el almacenamiento real del reloj nunca se toca.
 /// Todos los datos son de DEMOSTRACIÓN (la app ya muestra la marca DEMO en Debug).
+/// La llamada de emergencia es SIEMPRE simulada (`MockEmergencyDialer`): no abre nada.
 enum DemoScenario {
     static let scenarioKey = "demo.scenario"
     static let routeKey = "demo.route"
+    static let scrollToEndKey = "demo.scrollToEnd"
+
+    /// Capturas: desplazar la pantalla principal hasta el final (sólo con escenario).
+    static var scrollToEnd: Bool {
+        return isRequested && UserDefaults.standard.bool(forKey: scrollToEndKey)
+    }
 
     enum Kind: String, CaseIterable {
         case idle
@@ -235,6 +243,8 @@ enum DemoScenario {
             return [.sync]
         case "picker":
             return [.pickStage]
+        case "sos":
+            return [.sos]
         default:
             if key.hasPrefix("poi-") {
                 let id = String(key.dropFirst(4))

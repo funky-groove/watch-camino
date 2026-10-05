@@ -44,12 +44,12 @@ struct SettingsView: View {
                     RowLabel(
                         symbol: SyncText.symbol(model.syncStatus),
                         title: L10n.settingsSyncRow,
-                        detail: SyncText.status(model.syncStatus)
+                        detail: SyncText.status(model.syncStatus, isDemo: model.isDemo)
                     )
                 }
                 .buttonStyle(RowButtonStyle())
 
-                // Informativo, sin botón: la app no llama ni avisa a nadie (SOS descartado).
+                // Informativo: dónde está el SOS (pantalla principal) y el SOS nativo del reloj.
                 StatusLine(symbol: Icon.info, text: L10n.settingsSosInfo)
                     .padding(.top, Spacing.m)
             }
@@ -113,6 +113,7 @@ struct SettingsView: View {
     }
 }
 
+#if DEBUG
 #Preview("negro · datos de demostración") {
     NavigationStack {
         SettingsView()
@@ -130,3 +131,4 @@ struct SettingsView: View {
     .environmentObject(AppModel())
     .environmentObject(ThemeStore())
 }
+#endif

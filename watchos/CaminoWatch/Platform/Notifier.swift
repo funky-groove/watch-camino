@@ -31,11 +31,35 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         center.setNotificationCategories([category])
     }
 
-    /// Se llama al pulsar "Comenzar etapa" (permiso en contexto, §11).
-    func requestPermissionIfNeeded() {
+    /// Se llama al pulsar "Iniciar trayecto" (permiso en contexto, §11).
+    /// `completion` (opcional) llega en el hilo principal cuando el usuario ha respondido.
+    func requestPermissionIfNeeded(completion: (() -> Void)? = nil) {
         center.requestAuthorization(options: [.alert, .sound]) { _, error in
             if let error = error {
                 Log.app.error("Notificaciones: error \(Log.describe(error), privacy: .public)")
+            }
+            if let completion = completion {
+                DispatchQueue.main.async {
+                    completion()
+                }
+            }
+        }
+    }
+
+    /// Estado real del permiso de notificaciones. `completion` llega en el hilo principal.
+    func currentPermission(completion: @escaping (LocationPermission) -> Void) {
+        center.getNotificationSettings { settings in
+            let status = settings.authorizationStatus
+            let permission: LocationPermission
+            if status == .notDetermined {
+                permission = .notDetermined
+            } else if status == .denied {
+                permission = .denied
+            } else {
+                permission = .granted
+            }
+            DispatchQueue.main.async {
+                completion(permission)
             }
         }
     }

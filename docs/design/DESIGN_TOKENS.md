@@ -60,6 +60,8 @@ Umbral aplicado: 4,5:1 a todo texto (también al grande, por margen) y 3:1 a com
 | crítico sobre superficie elevada | 4.5 | 5.95 | 4.99 |
 | texto de acción principal | 4.5 | 16.05 | 15.01 |
 | acción principal sobre fondo | 3.0 | 18.29 | 15.01 |
+| texto de acción de emergencia | 4.5 | 7.24 | 6.10 |
+| acción de emergencia sobre fondo | 3.0 | 8.25 | 6.10 |
 | contorno de control sobre fondo | 3.0 | 4.40 | 3.55 |
 | contorno de control sobre superficie | 3.0 | 3.65 | 3.21 |
 

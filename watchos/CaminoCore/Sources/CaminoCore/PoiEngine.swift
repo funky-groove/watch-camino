@@ -21,7 +21,7 @@ public enum PoiEngine {
     ///   - pois: POIs de la etapa activa.
     ///   - alerted: `alertedPoiIds` de la sesión.
     ///   - lastAlertAt: instante del último aviso.
-    ///   - now: instante de evaluación.
+    ///   - now: instante de evaluación: hora del reloj del sistema al procesar el fix (§6).
     ///   - position: posición del fix.
     ///   - accuracyMeters: precisión del fix (si > 50 m, el fix no pasa el paso 1 de §5).
     public static func evaluate(
@@ -47,9 +47,13 @@ public enum PoiEngine {
         if candidates.isEmpty {
             return nil
         }
-        // 3. Límite de ritmo.
-        if let last = lastAlertAt, now.timeIntervalSince(last) < minIntervalSeconds {
-            return nil
+        // 3. Límite de ritmo: sólo bloquea si 0 ≤ now − lastAlertAt < 60 s. Si el reloj ha
+        //    ido hacia atrás (intervalo negativo) no se bloquea: el intervalo no es fiable.
+        if let last = lastAlertAt {
+            let interval = now.timeIntervalSince(last)
+            if interval >= 0 && interval < minIntervalSeconds {
+                return nil
+            }
         }
         // 4. El más cercano; empate → menor id.
         return candidates.min(by: isCloser)

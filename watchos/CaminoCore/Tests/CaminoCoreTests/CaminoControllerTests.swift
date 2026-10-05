@@ -15,6 +15,23 @@ private final class BrokenSessionStore: SessionStore {
     }
 }
 
+/// Almacén que lee/escribe en memoria pero puede fallar las escrituras a demanda.
+private final class FlakySessionStore: SessionStore {
+    var value: PersistedSession?
+    var failSaves = false
+
+    func load() throws -> PersistedSession? {
+        return value
+    }
+
+    func save(_ value: PersistedSession) throws {
+        if failSaves {
+            throw BrokenStoreError()
+        }
+        self.value = value
+    }
+}
+
 /// Servicio de aplicación: persistencia en cada transición, restauración y sync.
 final class CaminoControllerTests: XCTestCase {
     private struct Env {
@@ -150,7 +167,7 @@ final class CaminoControllerTests: XCTestCase {
         controller.updateSteps(5000)
         try controller.finish()
         XCTAssertNil(controller.remainingMeters)
-        XCTAssertEqual(controller.totals, CaminoTotals(stages: 1, distanceMeters: 100, steps: 5000, activeSeconds: 3600))
+        XCTAssertEqual(controller.totals, CaminoTotals(stages: 1, distanceMeters: 100, steps: 5000, activeSeconds: 3600, movingSeconds: 70))
     }
 
     @MainActor
@@ -229,5 +246,62 @@ final class CaminoControllerTests: XCTestCase {
         let before = changes
         try controller.finish()
         XCTAssertGreaterThan(changes, before)
+    }
+
+    /// V-02 / §7 punto 4: sin servidor (BlockedCaminoApi) nunca "synced", ni con la cola vacía.
+    @MainActor
+    func testBlockedApiIsNeverSyncedEvenWithEmptyQueue() async throws {
+        let env = try makeEnv()
+        let controller = makeController(env, api: BlockedCaminoApi())
+        XCTAssertEqual(controller.sync.pendingCount, 0)
+        XCTAssertEqual(controller.sync.status, .blocked, "instalación nueva: no se dice sincronizado")
+        let status = await controller.syncNow(manual: true)
+        XCTAssertEqual(status, .blocked)
+        let automatic = await controller.syncNow(manual: false)
+        XCTAssertEqual(automatic, .blocked)
+        try controller.start(stageId: "cf-sarria-portomarin")
+        XCTAssertEqual(controller.sync.status, .blocked, "con eventos encolados sigue blocked")
+
+        // Con Mock y cola vacía sí puede decirse synced (la UI dice "servidor de demostración").
+        let demo = SyncEngine(api: MockCaminoApi(latencySeconds: 0), store: InMemorySyncQueueStore(), clock: env.clock, jitter: { 0 })
+        XCTAssertEqual(demo.status, .synced)
+    }
+
+    /// V-04: si falla el guardado de la sesión al finalizar y, tras relanzar, se vuelve a
+    /// finalizar la misma sesión, no se duplica `stage_finished`.
+    @MainActor
+    func testFinishWithFailedSaveDoesNotDuplicateStageFinished() async throws {
+        let env = try makeEnv()
+        let store = FlakySessionStore()
+        func make() -> CaminoController {
+            return CaminoController(
+                catalog: env.catalog,
+                poiSource: env.pois,
+                sessionStore: store,
+                syncStore: env.syncStore,
+                api: BlockedCaminoApi(),
+                clock: env.clock,
+                ids: SequentialIdGenerator(prefix: "id-\(env.syncStore.saveCount)-"),
+                jitter: { 0 },
+                autoSync: false
+            )
+        }
+        let controller = make()
+        let session = try controller.start(stageId: "cf-sarria-portomarin")
+        store.failSaves = true
+        try controller.finish()
+        store.failSaves = false
+
+        // Relanzar: en disco la sesión sigue Active; el evento ya está en la cola.
+        let relaunched = make()
+        XCTAssertEqual(relaunched.activeSession?.sessionId, session.sessionId)
+        env.clock.advance(by: 60)
+        try relaunched.finish()
+
+        let finished = (env.syncStore.value?.queue ?? []).filter {
+            $0.type == .stageFinished && $0.sessionId == session.sessionId
+        }
+        XCTAssertEqual(finished.count, 1, "un solo stage_finished por sesión")
+        XCTAssertEqual(relaunched.state, .idle)
     }
 }

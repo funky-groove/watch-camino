@@ -37,6 +37,8 @@ for t in ["textPrimary", "textSecondary", "positive", "warning", "critical"]:
         pairs.append((f"{NAMES[t]} sobre {NAMES[g]}", 4.5, t, g))
 pairs += [("texto de acción principal", 4.5, "actionPrimaryText", "actionPrimaryFill"),
           ("acción principal sobre fondo", 3.0, "actionPrimaryFill", "background"),
+          ("texto de acción de emergencia", 4.5, "actionPrimaryText", "critical"),
+          ("acción de emergencia sobre fondo", 3.0, "critical", "background"),
           ("contorno de control sobre fondo", 3.0, "controlOutline", "background"),
           ("contorno de control sobre superficie", 3.0, "controlOutline", "surface")]
 

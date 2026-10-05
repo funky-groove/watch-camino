@@ -19,7 +19,7 @@ struct SyncView: View {
 
                 StatusLine(
                     symbol: SyncText.symbol(status),
-                    text: SyncText.status(status),
+                    text: SyncText.status(status, isDemo: model.isDemo),
                     tone: SyncText.tone(status)
                 )
                 .accessibilityAddTraits(.isHeader)
@@ -72,7 +72,8 @@ struct SyncView: View {
     private func explanation(for status: SyncStatus) -> String {
         switch status {
         case .synced:
-            // En Debug el servidor es simulado: no decir "guardado en el servidor".
+            // Sólo con un servidor real se dice "enviado al servidor"; con Mock, demostración.
+            // Con BlockedCaminoApi el núcleo nunca da `.synced` (§7, punto 4).
             return model.isDemo ? L10n.sync2Demo : L10n.sync2Synced
         case .pending(let count):
             return L10n.sync2Pending(count)
@@ -99,6 +100,7 @@ struct SyncView: View {
     }
 }
 
+#if DEBUG
 #Preview("negro · servidor de demostración") {
     NavigationStack {
         SyncView()
@@ -116,3 +118,4 @@ struct SyncView: View {
     .environmentObject(AppModel())
     .environmentObject(ThemeStore())
 }
+#endif

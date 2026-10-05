@@ -469,6 +469,60 @@
         "acc": 5
       },
       "expected": null
+    },
+    {
+      "name": "reloj_hacia_atras_no_bloquea",
+      "pois": [
+        {
+          "id": "a",
+          "stageId": "s",
+          "name": "a",
+          "category": "water",
+          "location": {
+            "lat": 42.7825986,
+            "lon": -7.4141
+          }
+        },
+        {
+          "id": "b",
+          "stageId": "s",
+          "name": "b",
+          "category": "water",
+          "location": {
+            "lat": 42.7785517,
+            "lon": -7.4141
+          }
+        },
+        {
+          "id": "c",
+          "stageId": "s",
+          "name": "c",
+          "category": "water",
+          "location": {
+            "lat": 42.7897932,
+            "lon": -7.4141
+          }
+        },
+        {
+          "id": "d",
+          "stageId": "s",
+          "name": "d",
+          "category": "water",
+          "location": {
+            "lat": 42.7808,
+            "lon": -7.4116494
+          }
+        }
+      ],
+      "alreadyAlerted": [],
+      "lastAlertAt": 2000,
+      "now": 1000,
+      "position": {
+        "lat": 42.7808,
+        "lon": -7.4141,
+        "acc": 5
+      },
+      "expected": "a"
     }
   ]
 }

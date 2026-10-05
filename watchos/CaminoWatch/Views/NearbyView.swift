@@ -250,12 +250,13 @@ struct NearbyLocationLine: Identifiable {
             return L10n.nearbySpokenAgeNow
         }
         if minutes < 60 {
-            return L10n.nearbySpokenAgoPrefix + " " + L10n.spokenMinutes(minutes)
+            return L10n.nearbySpokenAgo(L10n.spokenMinutes(minutes))
         }
-        return L10n.nearbySpokenAgoPrefix + " " + L10n.spokenHours(minutes / 60)
+        return L10n.nearbySpokenAgo(L10n.spokenHours(minutes / 60))
     }
 }
 
+#if DEBUG
 #Preview("negro · datos de demostración") {
     NavigationStack {
         NearbyView(waterOnly: true)
@@ -273,3 +274,4 @@ struct NearbyLocationLine: Identifiable {
     .environmentObject(AppModel())
     .environmentObject(ThemeStore())
 }
+#endif

@@ -1,0 +1,4 @@
+/* Permission texts (English). The Spanish base texts are in project.yml (Info.plist). */
+"NSLocationWhenInUseUsageDescription" = "Camino Seguro uses your location during the walk to measure the distance walked and alert you to nearby places of interest. Your location is not sent to any server.";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "Camino Seguro uses your location while a walk is in progress, also with the screen off, to measure the distance and alert you to nearby places of interest. Your location is not sent to any server.";
+"NSMotionUsageDescription" = "Camino Seguro counts your steps during the walk with the watch's motion sensor.";

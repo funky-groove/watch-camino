@@ -93,6 +93,7 @@ struct PoiDetailView: View {
     }
 }
 
+#if DEBUG
 #Preview("negro · datos de demostración") {
     NavigationStack {
         // "p01": Fuente de Barbadelo, de shared/fixtures/pois.json (datos de demostración).
@@ -111,3 +112,4 @@ struct PoiDetailView: View {
     .environmentObject(AppModel())
     .environmentObject(ThemeStore())
 }
+#endif

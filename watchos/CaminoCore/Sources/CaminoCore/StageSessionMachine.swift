@@ -5,21 +5,28 @@ public enum SessionError: String, Error, Equatable, Sendable {
     case alreadyActive
     case unknownStage
     case notActive
+    /// V1.1 §C: `pause` con el trayecto ya en pausa.
+    case alreadyPaused
+    /// V1.1 §C: `resume` sin pausa en curso.
+    case notPaused
 }
 
 /// Resultado de `updateLocation`.
 public struct LocationUpdateResult: Equatable, Sendable {
     public let distance: DistanceStepOutcome
     public let alert: PoiAlert?
+    /// Detalle de métricas del trayecto (V1.1). `nil` si el fix no pasó el paso 1 de §5.
+    public let trip: TripFixOutcome?
 
-    public init(distance: DistanceStepOutcome, alert: PoiAlert?) {
+    public init(distance: DistanceStepOutcome, alert: PoiAlert?, trip: TripFixOutcome? = nil) {
         self.distance = distance
         self.alert = alert
+        self.trip = trip
     }
 
     /// `true` si la sesión cambió y conviene persistir.
     public var changedSession: Bool {
-        return distance.movedAnchor || alert != nil
+        return distance.movedAnchor || alert != nil || (trip?.changedMetrics ?? false)
     }
 }
 
@@ -94,10 +101,34 @@ public struct StageSessionMachine {
         return true
     }
 
-    /// Acumulador de distancia (§5) + motor POI (§6).
+    /// En marcha → Pausado (V1.1 §C): `pausedAt = now`, `lastFix = nil`.
+    public mutating func pause(now: Date) throws {
+        guard case .active(var session) = state else {
+            throw SessionError.notActive
+        }
+        var metrics = session.metrics
+        try metrics.pause(at: now)
+        session.metrics = metrics
+        state = .active(session)
+    }
+
+    /// Pausado → En marcha (V1.1 §C): `pausedSeconds += max(0, now − pausedAt)`.
+    public mutating func resume(now: Date) throws {
+        guard case .active(var session) = state else {
+            throw SessionError.notActive
+        }
+        var metrics = session.metrics
+        try metrics.resume(at: now)
+        session.metrics = metrics
+        state = .active(session)
+    }
+
+    /// Acumulador de distancia (§5) + métricas del trayecto (V1.1) + motor POI (§6).
     /// - Parameter pois: POIs; sólo se consideran los de la etapa activa.
-    /// - Note: el "now" del límite de ritmo POI es `fix.timestamp`.
-    public mutating func updateLocation(_ fix: LocationFix, pois: [Poi]) throws -> LocationUpdateResult {
+    /// - Parameter now: hora del reloj del sistema al procesar el fix; es el "now" del
+    ///   límite de ritmo POI (§6), no `fix.timestamp`, para que un lote de fixes atrasados
+    ///   no produzca varios avisos seguidos.
+    public mutating func updateLocation(_ fix: LocationFix, pois: [Poi], now: Date) throws -> LocationUpdateResult {
         guard case .active(var session) = state else {
             throw SessionError.notActive
         }
@@ -106,45 +137,45 @@ public struct StageSessionMachine {
             return LocationUpdateResult(distance: .rejectedAccuracy, alert: nil)
         }
 
-        var accumulator = DistanceAccumulator(distanceMeters: session.distanceMeters, lastFix: session.lastFix)
-        let outcome = accumulator.add(fix)
-        session.distanceMeters = accumulator.distanceMeters
-        session.lastFix = accumulator.lastFix
+        // Métricas (§5, V1.1 §D–F). En pausa no cambian: sólo se evalúan avisos POI (§C).
+        var metrics = session.metrics
+        let trip = metrics.add(fix)
+        session.metrics = metrics
+        let outcome = trip.distance
 
         let stagePois = pois.filter { $0.stageId == session.stageId }
         let alert = PoiEngine.evaluate(
             pois: stagePois,
             alerted: session.alertedPoiIds,
             lastAlertAt: session.lastAlertAt,
-            now: fix.timestamp,
+            now: now,
             position: fix.point,
             accuracyMeters: fix.accuracyMeters
         )
         if let alert = alert {
             session.alertedPoiIds.insert(alert.poi.id)
-            session.lastAlertAt = fix.timestamp
+            session.lastAlertAt = now
         }
         state = .active(session)
-        return LocationUpdateResult(distance: outcome, alert: alert)
+        return LocationUpdateResult(distance: outcome, alert: alert, trip: trip)
     }
 
     /// Active → Idle. Añade el resumen al historial y encola `stage_finished`.
     public mutating func finish(now: Date) throws -> FinishResult {
-        guard case .active(let session) = state else {
+        guard case .active(var session) = state else {
             throw SessionError.notActive
         }
+        // V1.1 §C: finalizar en pausa cierra la pausa en curso.
+        var metrics = session.metrics
+        metrics.closePause(at: now)
+        session.metrics = metrics
+
         let elapsed = now.timeIntervalSince(session.startedAt)
         let activeSeconds: Int
         if elapsed.isFinite && elapsed > 0 {
-            activeSeconds = Int(elapsed.rounded(.down))
+            activeSeconds = Int(min(elapsed, Double(Int32.max)).rounded(.down))
         } else {
             activeSeconds = 0
-        }
-        let distance: Int
-        if session.distanceMeters.isFinite && session.distanceMeters > 0 {
-            distance = Int(session.distanceMeters.rounded())
-        } else {
-            distance = 0
         }
         let summary = SessionSummary(
             sessionId: session.sessionId,
@@ -152,8 +183,14 @@ public struct StageSessionMachine {
             startedAt: session.startedAt,
             finishedAt: now,
             steps: max(0, session.steps),
-            distanceMeters: distance,
-            activeSeconds: activeSeconds
+            distanceMeters: StageSessionMachine.roundHalfUp(session.distanceMeters),
+            activeSeconds: activeSeconds,
+            // El tiempo en movimiento nunca supera la duración total (§D).
+            movingSeconds: min(StageSessionMachine.roundHalfUp(session.movingSeconds), activeSeconds),
+            pausedSeconds: StageSessionMachine.roundHalfUp(session.pausedSeconds),
+            ascentMeters: StageSessionMachine.roundHalfUp(session.ascentMeters),
+            descentMeters: StageSessionMachine.roundHalfUp(session.descentMeters),
+            profile: session.profile
         )
         history.insert(summary, at: 0)
         state = .idle
@@ -165,5 +202,13 @@ public struct StageSessionMachine {
             payload: SyncPayload.finished(summary)
         )
         return FinishResult(summary: summary, events: [event])
+    }
+
+    /// Entero no negativo con redondeo half-up (`floor(x + 0.5)`); NaN/negativo → 0.
+    static func roundHalfUp(_ value: Double) -> Int {
+        guard value.isFinite, value > 0 else {
+            return 0
+        }
+        return Int(min(value, 1.0e15) + 0.5) // truncar tras +0.5 = floor para x ≥ 0
     }
 }

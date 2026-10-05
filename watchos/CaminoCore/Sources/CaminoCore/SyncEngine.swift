@@ -72,8 +72,13 @@ public final class SyncEngine {
         }
         self.state = loaded
         self.loadError = error
-        self.status = SyncEngine.restingStatus(for: loaded)
+        self.hasNoServer = api is BlockedCaminoApi
+        self.status = SyncEngine.restingStatus(for: loaded, hasNoServer: api is BlockedCaminoApi)
     }
+
+    /// `true` con `BlockedCaminoApi` (Release sin contrato): no existe servidor, así que
+    /// el estado es siempre `blocked`, también con la cola vacía (§7, punto 4).
+    public let hasNoServer: Bool
 
     public var isDemo: Bool {
         return api.isDemo
@@ -88,11 +93,21 @@ public final class SyncEngine {
     }
 
     /// Añade eventos al final de la cola (FIFO) y persiste.
+    /// Un `stage_finished` de una sesión que ya tiene uno en la cola (o en dead-letter) se
+    /// descarta: pasa si falló el guardado de la sesión al finalizar y, tras relanzar, la
+    /// etapa vuelve a terminarse (V-04).
     public func enqueue(_ events: [SyncEvent]) {
-        guard !events.isEmpty else {
+        var accepted: [SyncEvent] = []
+        for event in events {
+            if event.type == .stageFinished && hasFinished(sessionId: event.sessionId, extra: accepted) {
+                continue
+            }
+            accepted.append(event)
+        }
+        guard !accepted.isEmpty else {
             return
         }
-        state.queue.append(contentsOf: events)
+        state.queue.append(contentsOf: accepted)
         persist()
         if isSyncing {
             return
@@ -102,7 +117,7 @@ public final class SyncEngine {
             // Se mantiene: sigue siendo la explicación correcta de por qué no se envía.
             break
         default:
-            setStatus(.pending(state.queue.count))
+            setStatus(SyncEngine.honest(.pending(state.queue.count), hasNoServer: hasNoServer))
         }
     }
 
@@ -117,7 +132,8 @@ public final class SyncEngine {
 
         // 1. Backoff activo y disparo no manual → no se envía nada.
         if !manual, let next = state.nextAttemptAt, now < next {
-            let resting: SyncStatus = state.queue.isEmpty ? .synced : .pending(state.queue.count)
+            let raw: SyncStatus = state.queue.isEmpty ? .synced : .pending(state.queue.count)
+            let resting = SyncEngine.honest(raw, hasNoServer: hasNoServer)
             setStatus(resting)
             return resting
         }
@@ -165,12 +181,22 @@ public final class SyncEngine {
         persist()
         isSyncing = false
 
-        let finalStatus = SyncEngine.status(for: outcome, queueCount: state.queue.count)
+        let finalStatus = SyncEngine.honest(
+            SyncEngine.status(for: outcome, queueCount: state.queue.count),
+            hasNoServer: hasNoServer
+        )
         setStatus(finalStatus)
         return finalStatus
     }
 
     // MARK: - Privado
+
+    private func hasFinished(sessionId: String, extra: [SyncEvent]) -> Bool {
+        let matches: (SyncEvent) -> Bool = { $0.type == .stageFinished && $0.sessionId == sessionId }
+        return state.queue.contains(where: matches)
+            || state.deadLetters.contains(where: matches)
+            || extra.contains(where: matches)
+    }
 
     private func removeFromQueue(eventId: String) {
         if let index = state.queue.firstIndex(where: { $0.eventId == eventId }) {
@@ -204,10 +230,21 @@ public final class SyncEngine {
         }
     }
 
-    private static func restingStatus(for state: SyncQueueState) -> SyncStatus {
+    private static func restingStatus(for state: SyncQueueState, hasNoServer: Bool) -> SyncStatus {
         if state.queue.isEmpty {
-            return .synced
+            return honest(.synced, hasNoServer: hasNoServer)
         }
-        return status(for: state.lastOutcome ?? .pending, queueCount: state.queue.count)
+        return honest(status(for: state.lastOutcome ?? .pending, queueCount: state.queue.count), hasNoServer: hasNoServer)
+    }
+
+    /// Sin servidor nunca se dice "sincronizado" ni "pendiente de reintento": siempre `blocked`.
+    private static func honest(_ status: SyncStatus, hasNoServer: Bool) -> SyncStatus {
+        guard hasNoServer else {
+            return status
+        }
+        if status == .syncing {
+            return status
+        }
+        return .blocked
     }
 }

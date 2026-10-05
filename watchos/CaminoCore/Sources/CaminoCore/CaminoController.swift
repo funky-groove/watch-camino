@@ -238,13 +238,14 @@ public final class CaminoController {
     }
 
     /// Fix de ubicación. En Idle se ignora sin error (§4).
+    /// El límite de ritmo POI usa `clock.now()` (reloj del sistema), no `fix.timestamp` (§6).
     @discardableResult
     public func updateLocation(_ fix: LocationFix) -> LocationUpdateResult? {
         guard let session = machine.state.activeSession else {
             return nil
         }
         let stagePois = pois(forStage: session.stageId).filter { alertCategories.contains($0.category) }
-        guard let result = try? machine.updateLocation(fix, pois: stagePois) else {
+        guard let result = try? machine.updateLocation(fix, pois: stagePois, now: clock.now()) else {
             return nil
         }
         if result.changedSession {
@@ -254,7 +255,29 @@ public final class CaminoController {
         return result
     }
 
-    /// Active → Idle. Persiste, encola `stage_finished` y dispara sincronización.
+    /// En marcha → Pausado (V1.1 §C). Persiste y notifica; no encola eventos ni sincroniza.
+    /// - Throws: `SessionError.notActive` o `.alreadyPaused`.
+    public func pause() throws {
+        try machine.pause(now: clock.now())
+        persistSession()
+        notifyChange()
+    }
+
+    /// Pausado → En marcha (V1.1 §C). Persiste y notifica; no encola eventos ni sincroniza.
+    /// - Throws: `SessionError.notActive` o `.notPaused`.
+    public func resume() throws {
+        try machine.resume(now: clock.now())
+        persistSession()
+        notifyChange()
+    }
+
+    /// `true` si hay trayecto activo en pausa.
+    public var isPaused: Bool {
+        return machine.state.isPaused
+    }
+
+    /// Active → Idle (cierra la pausa en curso si la hay). Persiste, encola `stage_finished`
+    /// y dispara sincronización.
     @discardableResult
     public func finish() throws -> SessionSummary {
         let result = try machine.finish(now: clock.now())

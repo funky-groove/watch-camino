@@ -1,5 +1,6 @@
 import Foundation
 import WidgetKit
+import CaminoCore
 
 /// Publica una instantánea para complicaciones y widgets (target `CaminoWidgets`).
 ///

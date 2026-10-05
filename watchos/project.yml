@@ -50,13 +50,17 @@ targets:
       properties:
         CFBundleDisplayName: Camino Seguro
         CFBundleDevelopmentRegion: es
+        # Español (base) e inglés: es.lproj / en.lproj (watchos/tools/gen_strings.py).
+        CFBundleLocalizations:
+          - es
+          - en
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         WKApplication: true
         WKWatchOnly: true
-        NSLocationWhenInUseUsageDescription: "Camino Seguro usa tu ubicación durante la etapa para medir la distancia recorrida y avisarte de puntos de interés cercanos. Tu ubicación no se envía a ningún servidor."
-        NSLocationAlwaysAndWhenInUseUsageDescription: "Camino Seguro usa tu ubicación mientras hay una etapa en curso, también con la pantalla apagada, para medir la distancia y avisarte de puntos de interés cercanos. Tu ubicación no se envía a ningún servidor."
-        NSMotionUsageDescription: "Camino Seguro cuenta tus pasos durante la etapa con el sensor de movimiento del reloj."
+        NSLocationWhenInUseUsageDescription: "Camino Seguro usa tu ubicación durante el trayecto para medir la distancia recorrida y avisarte de puntos de interés cercanos. Tu ubicación no se envía a ningún servidor."
+        NSLocationAlwaysAndWhenInUseUsageDescription: "Camino Seguro usa tu ubicación mientras hay un trayecto en curso, también con la pantalla apagada, para medir la distancia y avisarte de puntos de interés cercanos. Tu ubicación no se envía a ningún servidor."
+        NSMotionUsageDescription: "Camino Seguro cuenta tus pasos durante el trayecto con el sensor de movimiento del reloj."
         UIBackgroundModes:
           - location
         # Enlaces directos desde complicaciones, widgets y notificaciones (DeepLink en CaminoCore).
@@ -111,6 +115,9 @@ targets:
       properties:
         CFBundleDisplayName: Camino Seguro
         CFBundleDevelopmentRegion: es
+        CFBundleLocalizations:
+          - es
+          - en
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:

@@ -2,13 +2,16 @@ import SwiftUI
 import CaminoCore
 import CaminoDesign
 
-/// "Mi etapa": pantalla inicial, sin etapa en curso o con ella.
+/// Pantalla principal, sin trayecto en curso o con él.
 ///
-/// Con etapa en curso, lo primero que se ve (sin desplazarse en 40 mm, texto por defecto)
-/// responde a tres preguntas: ¿cuánto llevo? (cifra héroe), ¿cuánto tiempo? y ¿cómo va
-/// mi etapa? (nombre, línea de progreso y "quedan X km"). Lo demás queda debajo, al
-/// alcance de la Digital Crown. Con la pantalla atenuada (Always On) sólo se muestran
-/// esas tres respuestas.
+/// - Cabecera (barra nativa, fija al desplazar y respetando la hora): ajustes a la izquierda
+///   y «SOS» a la derecha. El SOS se alcanza sin recorrer las estadísticas.
+/// - Con trayecto en curso, lo primero que se ve responde a: ¿cuánto llevo? (cifra héroe),
+///   ¿cuánto tiempo? y ¿cómo va el trayecto? Lo demás queda debajo, con la Digital Crown,
+///   y «Finalizar trayecto» va al final, separado por una línea. Con la pantalla atenuada
+///   (Always On) sólo se muestran esas tres respuestas.
+/// - Abrir el SOS apila una pantalla sobre ésta: al volver, esta vista sigue viva (misma
+///   identidad en la raíz del `NavigationStack`) con su posición de desplazamiento.
 struct HomeView: View {
     @EnvironmentObject private var model: AppModel
     @Binding var path: [Route]
@@ -16,20 +19,32 @@ struct HomeView: View {
     @Environment(\.palette) private var palette
     @Environment(\.isLuminanceReduced) private var isLuminanceReduced
     @State private var confirmingFinish = false
+    /// Primer toque en «Iniciar trayecto» ya atendido; se rearma al volver a esta pantalla.
+    @State private var startTapped = false
+
+    /// Ancla del final del contenido (capturas con `-demo.scrollToEnd`).
+    private static let finishAnchor = "home.finish"
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Spacing.s) {
-                if let session = model.activeSession {
-                    activeContent(session)
-                } else {
-                    idleContent
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: Spacing.s) {
+                    if let session = model.activeSession {
+                        activeContent(session)
+                    } else {
+                        idleContent
+                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .onAppear {
+                #if DEBUG
+                scrollToEndForScreenshots(proxy)
+                #endif
+            }
         }
         .toolbar {
-            // Posiciones fijas: no cambian con el estado de la etapa.
+            // Posiciones fijas: no cambian con el estado del trayecto.
             ToolbarItem(placement: .topBarLeading) {
                 Button {
                     path.append(.settings)
@@ -41,12 +56,19 @@ struct HomeView: View {
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
-                    path.append(.nearby(waterOnly: true))
+                    openSOS()
                 } label: {
-                    Label(L10n.myStageWaterButton, systemImage: Icon.water)
-                        .labelStyle(.iconOnly)
+                    Text(L10n.sosButton)
                 }
-                .accessibilityLabel(L10n.myStageWaterButton)
+                .buttonStyle(SOSButtonStyle())
+                .accessibilityLabel(L10n.sosButton)
+                .accessibilityHint(L10n.sosButtonHint)
+            }
+        }
+        .onChange(of: path.isEmpty) { _, isEmpty in
+            // De vuelta en esta pantalla (p. ej. al salir de elegir etapa sin iniciar).
+            if isEmpty {
+                startTapped = false
             }
         }
         .confirmationDialog(
@@ -63,7 +85,40 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - Con etapa en curso
+    // MARK: - Acciones
+
+    /// Un toque abre la pantalla SOS. Un segundo toque rápido no apila otra.
+    private func openSOS() {
+        guard path.last != .sos else {
+            return
+        }
+        path.append(.sos)
+    }
+
+    /// Iniciar trayecto → elegir etapa. Se ignora un segundo toque (doble toque).
+    private func startTrip() {
+        guard !startTapped, !model.isStarting, model.activeSession == nil, path.isEmpty else {
+            return
+        }
+        startTapped = true
+        // Permisos pedidos en contexto (§11), antes de elegir la etapa.
+        model.requestPermissions()
+        path.append(.pickStage)
+    }
+
+    #if DEBUG
+    /// Sólo capturas: con `-demo.scrollToEnd YES` se desplaza hasta «Finalizar trayecto».
+    private func scrollToEndForScreenshots(_ proxy: ScrollViewProxy) {
+        guard DemoScenario.scrollToEnd else {
+            return
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            proxy.scrollTo(HomeView.finishAnchor, anchor: .bottom)
+        }
+    }
+    #endif
+
+    // MARK: - Con trayecto en curso
 
     @ViewBuilder
     private func activeContent(_ session: StageSession) -> some View {
@@ -86,19 +141,27 @@ struct HomeView: View {
             if model.isDemo {
                 DemoBadge()
             }
+            NavigationLink(value: Route.statDetail(.steps)) {
+                stepsMetric(session)
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint(L10n.myStageOpenDetailHint)
+
+            staleLocationLine
+
+            // Agua: a una pulsación, cerca de arriba.
+            waterRow
+            // §10.3: debajo de las cifras principales, para no desplazarlas.
+            if let next = model.nextPoi {
+                nextPoiRow(next)
+            }
             if let alert = model.lastAlert {
                 alertCard(alert)
             }
-            waterRow
             statsRow
             syncRow
             warnings
-            Button {
-                confirmingFinish = true
-            } label: {
-                Text(L10n.myStageFinish)
-            }
-            .buttonStyle(SecondaryButtonStyle(destructive: true))
+            finishSection
         }
     }
 
@@ -130,8 +193,40 @@ struct HomeView: View {
         }
     }
 
-    /// ¿Cómo va mi etapa? Nombre, progreso recorrido/plan y "quedan X km" en texto
-    /// (el color de la línea no es la única señal).
+    /// Pasos del sensor de movimiento; sin acceso: "sin datos de pasos", no un cero ficticio.
+    private func stepsMetric(_ session: StageSession) -> some View {
+        let unavailable = model.stepsUnavailable
+        return MetricView(
+            label: L10n.statsMetricSteps,
+            value: unavailable ? nil : Formatters.steps(session.steps),
+            spokenValue: unavailable ? nil : Spoken.steps(session.steps),
+            emptyText: L10n.statsNoSteps
+        )
+        .frame(minHeight: Target.minimumHeight)
+        .contentShape(Rectangle())
+    }
+
+    /// Si la última posición es antigua (> 5 min), se dice: la distancia no se está actualizando.
+    private var staleLocationLine: some View {
+        TimelineView(.periodic(from: Date(), by: 30)) { context in
+            let quality = LocationQuality.of(model.latestKnownFix, now: context.date)
+            if HomeView.isStale(quality) {
+                NearbyLocationStatus(line: NearbyLocationLine.of(quality))
+            }
+        }
+    }
+
+    private static func isStale(_ quality: LocationQuality) -> Bool {
+        switch quality {
+        case .stale:
+            return true
+        case .none, .good, .imprecise:
+            return false
+        }
+    }
+
+    /// ¿Cómo va el trayecto? Nombre de la etapa, progreso recorrido/plan y "quedan X km" en
+    /// texto (el color de la línea no es la única señal).
     private func stageProgress(_ session: StageSession) -> some View {
         let name = model.stageName(id: session.stageId)
         let plan = model.stage(id: session.stageId)?.distanceMeters ?? 0
@@ -152,7 +247,7 @@ struct HomeView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(L10n.myStageStage + ": " + name)
+        .accessibilityLabel(L10n.myStageActive + ": " + name)
         .accessibilityValue(spokenRemaining)
     }
 
@@ -170,11 +265,57 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - Sin etapa en curso
+    /// Al final del contenido, separado por una línea y espacio. Neutro (no rojo) y a todo
+    /// el ancho: no se confunde con el «SOS» compacto y rojo de la cabecera.
+    private var finishSection: some View {
+        VStack(alignment: .leading, spacing: Spacing.m) {
+            Hairline()
+            Button {
+                confirmingFinish = true
+            } label: {
+                HStack(spacing: Spacing.xs) {
+                    IconView(name: Icon.finish)
+                    Text(L10n.myStageFinish)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .buttonStyle(SecondaryButtonStyle())
+            .accessibilityHint(L10n.myStageFinishHint)
+        }
+        .padding(.top, Spacing.l)
+        .id(HomeView.finishAnchor)
+    }
+
+    // MARK: - Sin trayecto en curso
 
     @ViewBuilder
     private var idleContent: some View {
-        SectionLabel(text: L10n.myStageIdle)
+        if isLuminanceReduced {
+            SectionLabel(text: L10n.myStageIdle)
+            lastFinishedLine
+        } else {
+            Button {
+                startTrip()
+            } label: {
+                Text(L10n.myStageStart)
+            }
+            .buttonStyle(PrimaryButtonStyle())
+            .disabled(startTapped || model.isStarting)
+            .accessibilityHint(L10n.myStageStartHint)
+            if model.isDemo {
+                DemoBadge()
+            }
+            waterRow
+            lastFinishedLine
+            permissionLines
+            statsRow
+            syncRow
+            warnings
+        }
+    }
+
+    @ViewBuilder
+    private var lastFinishedLine: some View {
         if let last = model.latestSummary {
             Text(L10n.myStageLastFinished(
                 model.stageName(id: last.stageId) + " · " + Formatters.distance(meters: last.distanceMeters)
@@ -187,23 +328,26 @@ struct HomeView: View {
                 model.stageName(id: last.stageId) + ", " + Spoken.distance(meters: last.distanceMeters)
             ))
         }
-        if !isLuminanceReduced {
-            if model.isDemo {
-                DemoBadge()
-            }
-            Button {
-                // Permisos pedidos en contexto (§11), antes de elegir la etapa.
-                model.requestPermissions()
-                path.append(.pickStage)
-            } label: {
-                Text(L10n.myStageStart)
-            }
-            .buttonStyle(PrimaryButtonStyle())
-            .accessibilityHint(L10n.myStageStartHint)
-            waterRow
-            statsRow
-            syncRow
-            warnings
+    }
+
+    /// Estado real de los permisos y, en una línea, para qué sirve cada uno.
+    @ViewBuilder
+    private var permissionLines: some View {
+        switch model.locationPermission {
+        case .granted:
+            StatusLine(symbol: Icon.location, text: L10n.permLocationGranted, tone: .positive)
+        case .notDetermined:
+            StatusLine(symbol: Icon.location, text: L10n.permLocationAsk)
+        case .denied:
+            StatusLine(symbol: Icon.locationOff, text: L10n.locationDenied, tone: .warning)
+        }
+        switch model.notificationPermission {
+        case .granted:
+            StatusLine(symbol: Icon.alert, text: L10n.permNotificationsGranted, tone: .positive)
+        case .notDetermined:
+            StatusLine(symbol: Icon.alert, text: L10n.permNotificationsAsk)
+        case .denied:
+            StatusLine(symbol: Icon.alert, text: L10n.permNotificationsDenied, tone: .warning)
         }
     }
 
@@ -237,6 +381,22 @@ struct HomeView: View {
         .accessibilityLabel(spoken)
     }
 
+    /// "próximo lugar · 1,2 km" + nombre: el POI no avisado más cercano (sólo con fix).
+    private func nextPoiRow(_ next: PoiAlert) -> some View {
+        let distance = PoiText.distance(next.distanceMeters, approximate: false)
+        let spoken = L10n.myStageNextPoiLabel + ", " + next.poi.name + ", "
+            + PoiText.spokenDistance(next.distanceMeters, approximate: false)
+        return NavigationLink(value: Route.poi(id: next.poi.id)) {
+            RowLabel(
+                symbol: Icon.category(next.poi.category),
+                title: L10n.myStageNextPoi(distance),
+                detail: next.poi.name
+            )
+        }
+        .buttonStyle(RowButtonStyle())
+        .accessibilityLabel(spoken)
+    }
+
     private var statsRow: some View {
         NavigationLink(value: Route.stats) {
             RowLabel(symbol: Icon.stats, title: L10n.myStageStats)
@@ -247,24 +407,27 @@ struct HomeView: View {
     /// Estado de sincronización, discreto: línea de estado pulsable.
     private var syncRow: some View {
         let status = model.syncStatus
+        // Sin servidor (Release) se dice qué pasa de verdad: guardado en el reloj, sin enviar.
+        let text = status == .blocked ? L10n.syncBlockedRow : SyncText.status(status, isDemo: model.isDemo)
         return NavigationLink(value: Route.sync) {
             StatusLine(
                 symbol: SyncText.symbol(status),
-                text: SyncText.status(status),
+                text: text,
                 tone: SyncText.tone(status)
             )
             .frame(minHeight: Target.minimumHeight)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(L10n.myStageSyncLabel + ": " + SyncText.status(status))
+        .accessibilityLabel(L10n.myStageSyncLabel + ": " + text)
         .accessibilityHint(L10n.myStageSyncHint)
     }
 
-    /// Avisos de permiso denegado, pasos no disponibles y error recuperable.
+    /// Avisos de permiso denegado (con trayecto: sin trayecto lo dicen `permissionLines`),
+    /// pasos no disponibles y error recuperable.
     @ViewBuilder
     private var warnings: some View {
-        if model.locationDenied {
+        if model.activeSession != nil && model.locationDenied {
             StatusLine(symbol: Icon.locationOff, text: L10n.locationDenied, tone: .warning)
         }
         if model.activeSession != nil && model.stepsUnavailable {

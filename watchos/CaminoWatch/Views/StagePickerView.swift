@@ -3,12 +3,15 @@ import CaminoCore
 import CaminoDesign
 
 /// Elegir etapa: la sugerida primero (la siguiente a la última terminada), marcada con
-/// el texto "sugerida". Pulsar → confirmar → empieza la etapa (y se vuelve a "Mi etapa").
+/// el texto "sugerida". Pulsar → confirmar → empieza el trayecto (y se vuelve a la
+/// pantalla principal). Tras confirmar, la lista se desactiva: un doble toque no inicia dos veces.
 struct StagePickerView: View {
     @EnvironmentObject private var model: AppModel
     @Environment(\.palette) private var palette
     @State private var selected: Stage?
     @State private var confirming = false
+    /// Confirmación ya atendida (además, `AppModel.startStage` ignora un segundo inicio).
+    @State private var didConfirm = false
 
     var body: some View {
         let stages = model.stagesForPicker
@@ -52,7 +55,16 @@ struct StagePickerView: View {
             presenting: selected
         ) { stage in
             Button(L10n.pickStageConfirmStart) {
+                guard !didConfirm else {
+                    return
+                }
+                didConfirm = true
                 model.startStage(stage)
+                if model.activeSession == nil {
+                    // No se pudo iniciar (el error se muestra en la pantalla principal):
+                    // se puede volver a intentar.
+                    didConfirm = false
+                }
             }
             Button(L10n.pickStageCancel, role: .cancel) {}
         } message: { stage in
@@ -72,6 +84,7 @@ struct StagePickerView: View {
             RowLabel(symbol: Icon.walk, title: stage.name, detail: detail)
         }
         .buttonStyle(RowButtonStyle())
+        .disabled(didConfirm || model.isStarting || model.activeSession != nil)
         .accessibilityLabel(spoken)
     }
 }

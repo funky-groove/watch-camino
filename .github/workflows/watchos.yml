@@ -6,6 +6,11 @@ on:
   pull_request:
     paths: ["watchos/**", "shared/**", ".github/workflows/watchos.yml"]
   workflow_dispatch:
+    inputs:
+      publish_screenshots:
+        description: "Commitear las capturas en docs/screenshots/watchos de esta rama"
+        type: boolean
+        default: false
 
 concurrency:
   group: watchos-${{ github.ref }}
@@ -63,6 +68,8 @@ jobs:
   screenshots:
     name: Capturas (simulador, escenarios DEMO)
     needs: app
+    permissions:
+      contents: write
     runs-on: macos-15
     timeout-minutes: 45
     steps:
@@ -87,3 +94,16 @@ jobs:
           name: watch-screenshots
           path: watchos/out
           if-no-files-found: warn
+      # Sólo a petición (workflow_dispatch): deja las capturas versionadas en la rama para revisión.
+      # Un push hecho con GITHUB_TOKEN no vuelve a disparar workflows.
+      - name: Publicar capturas en la rama
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_screenshots
+        run: |
+          rm -rf docs/screenshots/watchos
+          mkdir -p docs/screenshots/watchos
+          find watchos/out -maxdepth 1 \( -name '*.png' -o -name 'index.md' \) -exec cp {} docs/screenshots/watchos/ \;
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/screenshots/watchos
+          git commit -m "Capturas watchOS del simulador (CI, escenarios DEMO) @ ${GITHUB_SHA::7}" || exit 0
+          git push origin "HEAD:${GITHUB_REF_NAME}"

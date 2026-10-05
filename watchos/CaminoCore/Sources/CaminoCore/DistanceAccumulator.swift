@@ -12,13 +12,15 @@ public enum DistanceStepOutcome: Equatable, Sendable {
     case reanchored
     /// Paso 6: se suman estos metros.
     case added(Double)
+    /// V1.1 §C: trayecto en pausa; las métricas no cambian (sólo se evalúan avisos POI).
+    case ignoredPaused
 
     /// `true` si `lastFix` cambió.
     public var movedAnchor: Bool {
         switch self {
         case .anchored, .reanchored, .added:
             return true
-        case .rejectedAccuracy, .rejectedNoise:
+        case .rejectedAccuracy, .rejectedNoise, .ignoredPaused:
             return false
         }
     }

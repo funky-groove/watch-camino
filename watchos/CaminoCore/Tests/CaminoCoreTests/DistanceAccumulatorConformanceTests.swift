@@ -49,7 +49,7 @@ final class DistanceAccumulatorConformanceTests: XCTestCase {
             var machine = StageSessionMachine(knownStageIds: ["s"], ids: SequentialIdGenerator())
             _ = try machine.start(stageId: "s", sessionId: "S1", now: epoch(0))
             for fix in fixes {
-                _ = try machine.updateLocation(fix, pois: [])
+                _ = try machine.updateLocation(fix, pois: [], now: fix.timestamp)
             }
             let session = try XCTUnwrap(machine.activeSession)
             XCTAssertEqual(session.distanceMeters, jsonDouble(c["distance_m"]) ?? .nan, accuracy: tolerance, "máquina: \(name)")
@@ -64,7 +64,7 @@ final class DistanceAccumulatorConformanceTests: XCTestCase {
     func testUpdateLocationWhenIdleIsNotActive() {
         var machine = StageSessionMachine(knownStageIds: ["s"], ids: SequentialIdGenerator())
         let fix = LocationFix(point: GeoPoint(lat: 42.78, lon: -7.41), accuracyMeters: 5, timestamp: epoch(0))
-        XCTAssertThrowsError(try machine.updateLocation(fix, pois: [])) { error in
+        XCTAssertThrowsError(try machine.updateLocation(fix, pois: [], now: fix.timestamp)) { error in
             XCTAssertEqual(error as? SessionError, .notActive)
         }
     }

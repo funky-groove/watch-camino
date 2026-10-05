@@ -46,11 +46,16 @@ El núcleo no importa nada de UI, sensores ni plataforma. Todo lo de plataforma 
 4. **RECIBIR AVISOS POI**
 5. **FINALIZAR ETAPA**
 6. **SINCRONIZAR**
+7. **TRAYECTO + SOS** (§10.1): en la interfaz la sesión se llama **trayecto** («Iniciar trayecto»,
+   «Finalizar trayecto», «trayecto en curso»; el modelo sigue siendo etapa). Botón «SOS» fijo arriba a
+   la derecha que abre la pantalla de emergencia con «Llamar al 112».
 
 Fuera de alcance: navegación turn-by-turn, mapas, clon de la PWA, social, admin,
 pausar etapa, editar etapas, login interactivo (bloqueado por contrato), Premium,
 HealthKit/Health Services (no hay necesidad funcional demostrada: los pasos salen de
-CoreMotion / sensor de pasos).
+CoreMotion / sensor de pasos). Del SOS quedan fuera: llamada automática o sin confirmación del
+sistema, envío de ubicación o mensajes a nadie, contactos de emergencia, satélite propio, deducir el
+número de emergencia del idioma o la región (ver §10.1).
 
 ## 3. Modelo de dominio (nombres idénticos en ambas plataformas)
 
@@ -119,7 +124,10 @@ Sólo con sesión `Active`, sólo POIs de la etapa activa. En cada fix aceptado 
 
 1. Candidatos = POIs con `id ∉ alertedPoiIds` y `haversine(fix, poi) <= 300 m`.
 2. Si no hay candidatos → nada.
-3. Si `lastAlertAt != nil` y `now − lastAlertAt < 60 s` → nada (límite de ritmo; se reintentará en el siguiente fix).
+3. Si `lastAlertAt != nil` y `0 ≤ now − lastAlertAt < 60 s` → nada (límite de ritmo; se reintentará en el siguiente fix).
+   `now` es la hora del **reloj del sistema** al procesar el fix (no `fix.timestamp`): así un lote de fixes
+   atrasados no produce dos avisos seguidos. Si el reloj ha ido hacia atrás (`now < lastAlertAt`) no se bloquea.
+   Las categorías desactivadas por el usuario en Ajustes no son candidatas (no avisan ni consumen el límite).
 4. Si no → avisar del candidato **más cercano** (empate: menor `id` lexicográfico),
    añadirlo a `alertedPoiIds`, `lastAlertAt = now`.
 
@@ -153,6 +161,8 @@ Algoritmo `syncNow(now)`:
    - `Unauthorized` → estado `needsLink`, **parar** (el flujo de vinculación está BLOQUEADO por contrato).
    - `Blocked` → estado `blocked`, **parar**. No se pierde ningún evento.
 3. Cola vacía → estado `synced`.
+4. **Excepción**: si el adaptador es `BlockedCaminoApi` (Release sin contrato), el estado es siempre `blocked`,
+   también con la cola vacía. Nunca se muestra "sincronizado" si no existe servidor.
 
 `backoff(attempt) = min(30 · 2^(attempt−1), 1800)` segundos, más jitter aleatorio en `[0, 20 %]`
 (el jitter se inyecta; los vectores usan jitter 0). Vectores: `shared/conformance/backoff.json`.
@@ -217,6 +227,48 @@ Reglas:
 
 Glance (después de la V1 verde): complicación WidgetKit (watchOS) y Tile (Wear OS) con km restantes.
 
+### 10.1 Trayecto y SOS (pantalla principal y pantalla de emergencia)
+
+Pantalla principal (sustituye a los puntos 1 y 3 en lo que contradigan):
+- **Cabecera compacta fija** (barra nativa, respeta la hora y las zonas seguras): ajustes a la izquierda y
+  **«SOS»** a la derecha, visible al desplazar y alcanzable sin recorrer las estadísticas. No es una
+  superposición: no tapa contenido.
+- **Sin trayecto**: acción principal **«Iniciar trayecto»** (→ elegir etapa → confirmar). Doble toque = un
+  solo inicio (botón desactivado tras el primer toque y guarda `isStarting` en el modelo de la app).
+  Permisos: estado real (permitido / se pedirá al iniciar / denegado) con su propósito en una línea.
+- **Con trayecto**: estadísticas como contenido principal con desplazamiento vertical nativo (corona); datos
+  ausentes o antiguos se dicen («esperando GPS», «sin datos de pasos», «ubicación antigua»), nunca un cero
+  ficticio. Agua cercana como fila del contenido, cerca de arriba (1 pulsación).
+- **«Finalizar trayecto»** al final del contenido, separado (línea + espacio), con confirmación breve;
+  cancelar lo conserva todo. Persistencia y recuperación tras muerte del proceso como en §4/§12.
+- «SOS» y «Finalizar trayecto» inequívocamente distintos: texto, posición (cabecera / final) y forma
+  (cápsula compacta roja / botón ancho neutro).
+
+Botón «SOS»: etiqueta de texto (no sólo icono), rojo sobrio con contraste verificado, objetivo táctil
+≥ 44×44 pt (watchOS) / 48 dp (Wear OS). Un toque abre la pantalla de emergencia apilada en la navegación
+(volver del sistema restaura la pantalla anterior y su desplazamiento). Sin gestos personalizados.
+Lector de pantalla: «SOS, botón, abre la pantalla de emergencia».
+
+Pantalla de emergencia:
+- Acción principal **«Llamar al 112»** (grande, roja, texto, ≥ 52 pt de alto en watchOS). Entrega `tel:112`
+  al sistema (watchOS: `WKApplication.shared().openSystemURL`), que pide confirmación. **Sin** confirmación
+  propia, cuenta atrás, pulsación prolongada, menús ni formularios.
+- Resultado honesto: la app sólo sabe que **entregó la petición** (`DialResult.handedToSystem`) o que falló
+  (`.failed(motivo)`); nunca «llamada conectada», «emergencia enviada» ni «ayuda en camino». Texto tras
+  entregar: «Llamada solicitada al reloj. Si no aparece, usa el SOS del reloj: mantén pulsado el botón lateral.»
+- Alcance del número: **112 = España y UE**, constante documentada; no se deduce del idioma ni de la región.
+- Ubicación: la que ya hay, sin pedir permiso ni esperar al GPS (`EmergencyLocationSummary`): coordenadas con
+  5 decimales y N/S/E/O, precisión ±m, antigüedad; `current` (≤ 60 s), `lastKnown`, `stale` (> 5 min),
+  `noSignal`, `permissionDenied`. Si el permiso ya está concedido se pide una lectura única. **No se envía a
+  ningún sitio**: «Estas coordenadas no se envían al 112 automáticamente.»
+- Ayuda breve: SOS nativo del reloj (mantener pulsado el botón lateral) y satélite sólo como función del
+  sistema (Apple Watch Ultra 3 o posterior, regiones compatibles, mensajes; la app no lo controla).
+- Abrir o cerrar la pantalla no pausa ni finaliza el trayecto. Funciona sin trayecto, sin cuenta y sin backend.
+- Escenarios DEMO, capturas y tests usan un marcador simulado (`MockEmergencyDialer`) que no abre nada.
+- Matriz de verificación por plataforma: `docs/accessibility/SOS_CAPABILITY_MATRIX.md`.
+
+Idiomas: español (base) e inglés, con las mismas claves (`watchos/tools/gen_strings.py --check`).
+
 ## 11. Seguridad y privacidad
 
 - Release usa `BlockedCaminoApi`: imposible enviar datos a un servidor inventado.
@@ -226,7 +278,8 @@ Glance (después de la V1 verde): complicación WidgetKit (watchOS) y Tile (Wear
 - Datos locales: sesión e historial en almacenamiento privado de la app
   (watchOS: `FileProtectionType.completeUntilFirstUserAuthentication`).
 - Logs: sin coordenadas, sin tokens, sin identificadores de usuario.
-- Permisos mínimos, pedidos en contexto (al pulsar "Comenzar etapa", no al abrir):
+- Permisos mínimos, pedidos en contexto (al pulsar "Comenzar etapa" / «Iniciar trayecto», no al abrir;
+  la pantalla SOS nunca pide permisos):
   - watchOS: ubicación (en uso + background mode `location`), movimiento, notificaciones.
   - Wear OS: `ACCESS_FINE_LOCATION`, `ACTIVITY_RECOGNITION`, `POST_NOTIFICATIONS`,
     `FOREGROUND_SERVICE` + `FOREGROUND_SERVICE_LOCATION`. Nada de `INTERNET` mientras no haya contrato
@@ -253,3 +306,105 @@ Glance (después de la V1 verde): complicación WidgetKit (watchOS) y Tile (Wear
 - CI GitHub Actions:
   - `watchos.yml` (macOS): `swift test` del núcleo + `xcodegen` + `xcodebuild build` para simulador.
   - `wearos.yml` (Ubuntu): tests del núcleo + `assembleDebug` + `assembleRelease` + `lintDebug`.
+
+---
+
+# V1.1 — Trayecto completo, complicaciones y organización
+
+Ampliación pedida por producto (2026-10-05). Prevalece sobre lo anterior donde lo contradiga.
+Vectores nuevos: `shared/conformance/trip_metrics.json` y `units_formatting.json` (generados por `reference.py`).
+
+## A. Organización de la app
+
+| Destino | Contenido | Acceso |
+|---|---|---|
+| **Trayecto** | Pantalla principal y destino de la complicación | Raíz |
+| **Lugares** | Lista ampliada de puntos útiles + fichas | "Ver todos" en Trayecto; fila en Trayecto sin actividad |
+| **Ajustes** | Preferencias, acceso desde la esfera | Botón de cabecera (watchOS) / fila (Wear OS) |
+| SOS | Acción de emergencia, **no** destino de navegación cotidiana | Botón «SOS» arriba a la derecha en Trayecto |
+
+Navegación nativa (pila con volver del sistema). Sin barra de pestañas.
+En la interfaz se dice **trayecto**; en el modelo sigue siendo `StageSession` (etapa elegida).
+
+## B. Pantalla Trayecto activa — orden del contenido
+
+Cabecera compacta fija con «SOS» a la derecha. Contenido vertical:
+
+- **A. Estadísticas principales** (primera vista, sin desplazarse): distancia (destacada), tiempo en movimiento,
+  ritmo o velocidad (preferencia), estado «En marcha» / «Pausado» con texto y símbolo.
+- **B. Altitud y desnivel**: altitud actual, subida y bajada acumuladas; ausentes/antiguas identificadas.
+- **C. Perfil de altitud**: gráfica compacta (distancia × altitud) + resumen textual; tocar abre la vista ampliada.
+  Sólo perfil **registrado** (no hay ruta con elevación verificada en los datos actuales: no se dibuja relieve futuro).
+  Los tramos con `gapBefore` no se unen.
+- **D. Lugares útiles**: como máximo 3 (agua, albergue, resto por distancia), nombre, distancia **en línea recta**
+  (no hay rutas), sin estados de apertura/potabilidad (no hay datos). Tocar → ficha. «Ver todos» → Lugares.
+- **E. Controles**: «Pausar»/«Reanudar»; «Finalizar trayecto» como último botón, con confirmación.
+
+## C. Máquina de estados — pausa (§4.2)
+
+`StageSession` añade `pausedAt: Instant?`, `pausedSeconds`, `movingSeconds`, `ascentMeters`, `descentMeters`,
+`altitudeRef`, `altitude`, `altitudeAt`, `profile: [ProfileSample]`, `profileSpacing`.
+
+| Comando | En marcha | Pausado |
+|---|---|---|
+| `pause(now)` | → Pausado, `pausedAt = now`, `lastFix = nil` | error `alreadyPaused` (sin cambios) |
+| `resume(now)` | error `notPaused` | → En marcha, `pausedSeconds += max(0, now − pausedAt)` |
+| `updateLocation` | distancia, movimiento, altitud, perfil, avisos | **sólo avisos POI**; nada de métricas |
+| `finish(now)` | normal | cierra la pausa en curso (`pausedSeconds += now − pausedAt`) y finaliza |
+
+Los pasos no se pausan (el sensor no se puede pausar): se muestran tal cual. `lastFix = nil` al pausar
+para que el tramo recorrido en pausa no se cuente al reanudar.
+
+`SessionSummary` añade `movingSeconds`, `pausedSeconds`, `ascentMeters`, `descentMeters` (enteros, redondeo
+half-up) y `profile`. `stage_finished.payload` añade los cuatro enteros (nunca el perfil ni posiciones).
+
+## D. Tiempo en movimiento (§5.2)
+
+Cuando un tramo se **suma** a la distancia (§5 paso 6) y `d / dt ≥ 0,5 m/s` → `movingSeconds += dt`.
+Duración total = `finishedAt − startedAt`; tiempo en movimiento ≤ duración. Se muestran **diferenciados**.
+
+## E. Altitud y desnivel (§5.3)
+
+Fuente: altitud GPS del fix (`altitudeMeters`, `verticalAccuracyMeters`). Procedencia mostrada: "GPS".
+Un fix aporta altitud si pasa §5 paso 1, no está en pausa y `0 ≤ verticalAccuracy ≤ 15 m`.
+Histéresis de 3 m: `ref` = primera altitud válida; si `alt − ref ≥ 3` → `ascent += alt − ref; ref = alt`;
+si `ref − alt ≥ 3` → `descent += ref − alt; ref = alt`. Altitud "antigua" si `now − altitudeAt > 300 s`.
+
+## F. Perfil registrado (§5.4)
+
+Con cada altitud válida: si el perfil está vacío o `distance − último.d ≥ spacing` (inicial 50 m) se añade
+`{d, alt, gapBefore = (perfil no vacío y distance − último.d > 200 m)}`. Si supera `cap` (500) muestras: se
+conservan las de índice par, el `gapBefore` de una descartada pasa a la siguiente conservada, y `spacing *= 2`.
+
+## G. Unidades e idioma (§8.2)
+
+Preferencias: `units ∈ {metric, imperial}`, `paceMode ∈ {pace, speed}`. Idioma: español o inglés.
+Separador decimal/miles según idioma (es `,`/`.`, en `.`/`,`). Reglas exactas en `reference.py`
+(`fmt_distance_u`, `fmt_elevation`, `pace_text`, `speed_text`); sin dato (`< 100 m` o `< 60 s` en movimiento,
+o ritmo > 99:59) → "sin datos", nunca 0. Se aplican a estadísticas, altitud, gráficas, resumen y complicaciones.
+- watchOS: no hay API pública para fijar el idioma de una app desde la propia app; sigue el idioma del sistema
+  (Ajustes lo explica). Wear OS: idioma por app con `LocaleManager` (API 33+); en API 30–32 sigue el sistema.
+
+## H. Complicaciones
+
+watchOS: WidgetKit (ya existe). Wear OS: `ComplicationDataSourceService` (androidx.wear.watchface.complications).
+- Sin trayecto: icono + «Iniciar trayecto» si el formato admite texto.
+- Con trayecto: distancia + «en marcha» / «pausado».
+- Tocar abre Trayecto (inicio o estadísticas). **Nunca** inicia un trayecto ni una llamada.
+- Datos compartidos locales (App Group en watchOS; almacenamiento privado de la app en Wear OS), sin red.
+- Actualización por eventos y presupuesto del sistema; nunca "continua".
+
+## I. Aviso de primer uso «Accede desde tu esfera»
+
+Título «Accede desde tu esfera», texto «Abre Camino Seguro con un toque.», acciones «Cómo añadirlo» / «Ahora no».
+Se muestra una vez, sin trayecto activo, tras la configuración inicial; se aplaza si hay trayecto o si se está
+recuperando uno. Al descartarlo (o al abrir "Cómo añadirlo") se guarda localmente y no se repite. Cerrar la app
+con el aviso abierto = no decidido (se volverá a ofrecer). No afirma que la complicación esté instalada.
+Ruta permanente: **Ajustes → Acceso desde la esfera → Cómo añadirlo** (instrucciones manuales de la plataforma;
+no hay API pública verificada para abrir el editor de esfera desde una app de reloj).
+
+## J. Lugares
+
+Lista con filtros mínimos (todos / agua / alojamiento), estados (sin ubicación, sin resultados, datos de
+demostración/caché). Ficha: nombre, categoría, distancia y método ("en línea recta"), «Llamar» sólo si el POI
+tiene `phone` válido (E.164 o 9 dígitos españoles; los datos actuales no tienen teléfonos → no aparece).
