@@ -14,6 +14,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.items
@@ -38,14 +39,16 @@ import java.time.Instant
 @Composable
 fun ProfileScreen(profile: List<ProfileSample>, hasAltitudeData: Boolean, ascentMeters: Double, descentMeters: Double) {
     val f = LocalFormat.current
-    CaminoScreen {
-        item { ListHeader { Text(stringResource(R.string.profile_title)) } }
+    // Arriba, bajo la hora: el gráfico es alto y, centrado, empujaba el título encima de TimeText.
+    CaminoScreen(topAligned = true) {
+        item { ListHeader { Text(stringResource(R.string.profile_title), textAlign = TextAlign.Center) } }
         item {
             val summary = profileSummary(profile, spoken = true)
             androidx.compose.foundation.layout.Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp)
+                    // Las etiquetas de los ejes quedan en las esquinas: margen de pantalla redonda.
+                    .padding(horizontal = roundTextInset())
                     .clearAndSetSemantics { contentDescription = summary },
             ) {
                 ProfileChart(profile, height = 84.dp)
@@ -139,7 +142,11 @@ fun PlaceDetailScreen(poi: Poi?, source: PlacesSource, onCall: (String) -> Boole
             item { CenteredText(stringResource(R.string.place_not_found)) }
             return@CaminoScreen
         }
-        item { ListHeader { Text(text = poi.name, maxLines = 3, overflow = TextOverflow.Ellipsis) } }
+        item {
+            ListHeader {
+                Text(text = poi.name, maxLines = 3, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+            }
+        }
         item { CenteredText("${poi.category.icon} $category", style = MaterialTheme.typography.body2) }
         item {
             val position = source.position

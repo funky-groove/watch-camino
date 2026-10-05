@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
+import androidx.wear.compose.foundation.lazy.ScalingLazyColumnDefaults
 import androidx.wear.compose.foundation.lazy.ScalingLazyListAnchorType
 import androidx.wear.compose.foundation.lazy.ScalingLazyListScope
 import androidx.wear.compose.foundation.lazy.ScalingLazyListState
@@ -83,6 +84,7 @@ fun TripScaffold(
     val density = LocalDensity.current
     var headerHeightPx by remember { mutableIntStateOf(0) }
     val headerHeight = if (headerHeightPx > 0) with(density) { headerHeightPx.toDp() } else timeTextSpace() + MinTouchTarget
+    val side = listHorizontalPadding()
     Scaffold(
         modifier = Modifier.background(palette.background.toColor()),
         timeText = { TimeText() },
@@ -101,14 +103,15 @@ fun TripScaffold(
                 modifier = Modifier.fillMaxSize(),
                 state = listState,
                 contentPadding = PaddingValues(
-                    start = 10.dp,
-                    end = 10.dp,
+                    start = side,
+                    end = side,
                     top = headerHeight + 4.dp,
                     bottom = 36.dp,
                 ),
                 // Contenido alineado arriba bajo la cabecera (no centrado en la pantalla).
                 anchorType = ScalingLazyListAnchorType.ItemStart,
                 autoCentering = null,
+                scalingParams = ScalingLazyColumnDefaults.scalingParams(edgeAlpha = LIST_EDGE_ALPHA),
                 content = content,
             )
         }
@@ -197,6 +200,7 @@ fun StatRow(label: String, value: String, spoken: String, hero: Boolean = false,
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .fillMaxWidth()
+            .padding(horizontal = roundTextInset())
             .clearAndSetSemantics { contentDescription = spoken },
     ) {
         Text(

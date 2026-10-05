@@ -37,6 +37,25 @@ PKG="${WEAR_PACKAGE:-org.caminoseguro.watch}"
 COMPONENT="${WEAR_ACTIVITY:-$PKG/.ui.MainActivity}"
 APK="${APK:-$WEAROS_DIR/app/build/outputs/apk/debug/app-debug.apk}"
 WAIT_SECONDS="${SCREENSHOT_WAIT:-5}"
+
+# Espera (hasta READY_TIMEOUT s) a que la jerarquía de la app tenga contenido propio con texto.
+# Evita capturar la pantalla «Starting…» del sistema en arranques en frío lentos.
+READY_TIMEOUT="${SCREENSHOT_READY_TIMEOUT:-25}"
+wait_for_app_content() {
+  local name="$1" waited=0 dump
+  while [ "$waited" -lt "$READY_TIMEOUT" ]; do
+    dump="$(adb exec-out uiautomator dump /dev/tty 2>/dev/null || true)"
+    if echo "$dump" | grep -q "package=\"$PKG\"" \
+      && echo "$dump" | grep -E "package=\"$PKG\"" | grep -qE 'text="[^"]+"|content-desc="[^"]+"' \
+      && ! echo "$dump" | grep -q 'text="Starting'; then
+      sleep 1  # un fotograma más para que termine de pintar
+      return 0
+    fi
+    sleep 1
+    waited=$((waited + 1))
+  done
+  warn "contenido de la app no detectado tras ${READY_TIMEOUT}s ($name); se captura igualmente"
+}
 BOOT_TIMEOUT="${BOOT_TIMEOUT:-600}"
 
 # Rutas de navegación (deben coincidir con las de wearos/app/src/main/.../ui/CaminoApp.kt).
@@ -163,6 +182,7 @@ capture() {  # $1 pantalla, $2 escenario, $3 ruta, $4 tema, $5 idioma, $6 sufijo
     return 0
   fi
   sleep "$WAIT_SECONDS"
+  wait_for_app_content "$name"
 
   {
     echo "===== $name (scenario=$scenario route=${route:-home} theme=$theme lang=$lang)"

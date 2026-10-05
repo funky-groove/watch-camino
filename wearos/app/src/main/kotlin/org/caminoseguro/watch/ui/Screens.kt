@@ -2,6 +2,7 @@ package org.caminoseguro.watch.ui
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -205,6 +206,7 @@ fun SummaryScreen(state: CaminoUiState, onDone: () -> Unit) {
                 androidx.compose.foundation.layout.Box(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .padding(horizontal = roundTextInset())
                         .clearAndSetSemantics { contentDescription = description },
                 ) {
                     ProfileChart(summary.profile, height = 36.dp)

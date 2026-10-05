@@ -15,6 +15,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
+import androidx.wear.compose.foundation.lazy.ScalingLazyColumnDefaults
 import androidx.wear.compose.foundation.lazy.ScalingLazyListAnchorType
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import androidx.wear.compose.material.Chip
@@ -43,6 +44,8 @@ import org.caminoseguro.watch.core.SosViewState
 fun SosScreen(state: SosViewState, onDial: () -> Unit, onBack: () -> Unit) {
     val palette = LocalPalette.current
     val listState = rememberScalingLazyListState(initialCenterItemIndex = 0)
+    val side = listHorizontalPadding()
+    val small = isSmallScreen()
     Scaffold(
         modifier = Modifier.background(palette.background.toColor()),
         timeText = { TimeText() },
@@ -52,16 +55,18 @@ fun SosScreen(state: SosViewState, onDial: () -> Unit, onBack: () -> Unit) {
         ScalingLazyColumn(
             modifier = Modifier.fillMaxSize(),
             state = listState,
-            contentPadding = PaddingValues(start = 10.dp, end = 10.dp, top = timeTextSpace() + 2.dp, bottom = 36.dp),
+            contentPadding = PaddingValues(start = side, end = side, top = timeTextSpace() + 2.dp, bottom = 36.dp),
             anchorType = ScalingLazyListAnchorType.ItemStart,
             autoCentering = null,
+            // Sin encoger ni atenuar en los bordes: el botón de llamada arriba conserva su tamaño
+            // (objetivo ≥ 48 dp) y los textos de emergencia, su contraste.
+            scalingParams = ScalingLazyColumnDefaults.scalingParams(edgeScale = 1f, edgeAlpha = 1f),
         ) {
-            item { ListHeader { Text(stringResource(R.string.sos_title)) } }
-
-            // F-01: marcador simulado (escenario DEMO de Debug). Marca visible antes del botón.
-            demoBadge(state.simulated)
-            if (state.simulated) {
-                item { CenteredText(stringResource(R.string.sos_demo_notice), style = MaterialTheme.typography.caption1) }
+            // La acción principal se ve completa sin desplazarse: en reloj pequeño (≈192 dp) se omite
+            // el título y, en todos, la marca DEMO y su aviso van justo DEBAJO del botón (en la
+            // primera vista igualmente). El título sigue disponible en grande y para TalkBack.
+            if (!small) {
+                item { ListHeader { Text(stringResource(R.string.sos_title)) } }
             }
 
             // Acción principal: «Llamar al 112» / «Marcar 112». Nunca deshabilitada.
@@ -71,6 +76,7 @@ fun SosScreen(state: SosViewState, onDial: () -> Unit, onBack: () -> Unit) {
                     DialActionLabel.DIAL -> stringResource(R.string.sos_dial, state.number.digits)
                 }
                 val hint = stringResource(R.string.sos_call_hint)
+                val title = stringResource(R.string.sos_title)
                 Chip(
                     onClick = onDial,
                     enabled = state.actionEnabled,
@@ -81,8 +87,18 @@ fun SosScreen(state: SosViewState, onDial: () -> Unit, onBack: () -> Unit) {
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .semantics { contentDescription = "$label. $hint" },
+                        .semantics {
+                            // Sin título visible (reloj pequeño), TalkBack sigue anunciando «Emergencia».
+                            contentDescription = if (small) "$title. $label. $hint" else "$label. $hint"
+                        },
                 )
+            }
+
+            // F-01: marcador simulado (escenario DEMO de Debug). Marca y aviso bajo el botón, visibles
+            // en la primera vista.
+            demoBadge(state.simulated)
+            if (state.simulated) {
+                item { CenteredText(stringResource(R.string.sos_demo_notice), style = MaterialTheme.typography.caption1) }
             }
 
             // Resultado del intento (honesto). TalkBack lo anuncia al aparecer.

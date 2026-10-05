@@ -2,12 +2,14 @@ package org.caminoseguro.watch.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -16,8 +18,11 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
+import androidx.wear.compose.foundation.lazy.ScalingLazyColumnDefaults
+import androidx.wear.compose.foundation.lazy.ScalingLazyListAnchorType
 import androidx.wear.compose.foundation.lazy.ScalingLazyListScope
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import androidx.wear.compose.material.Chip
@@ -31,14 +36,48 @@ import org.caminoseguro.watch.R
 import org.caminoseguro.watch.core.SyncSnapshot
 import org.caminoseguro.watch.core.SyncStatus
 
+/** Margen lateral de los elementos de lista (guía Wear: ≈5,2 % del ancho de pantalla a cada lado). */
+@Composable
+fun listHorizontalPadding(): Dp = (LocalConfiguration.current.screenWidthDp * EDGE_MARGIN_FRACTION).dp
+
+/**
+ * Margen lateral EXTRA para filas de texto a ancho completo en pantalla redonda: cerca de arriba y
+ * abajo el círculo se estrecha y el texto tocaría el borde. Con el de la lista suma ≈10,4 % por lado.
+ * El texto se parte en más líneas; nunca se reduce la letra.
+ */
+@Composable
+fun roundTextInset(): Dp {
+    val cfg = LocalConfiguration.current
+    return if (cfg.isScreenRound) (cfg.screenWidthDp * EDGE_MARGIN_FRACTION).dp else 0.dp
+}
+
+/** Reloj pequeño (≈192 dp): se compacta lo superior para que la acción principal quepa sin desplazar. */
+@Composable
+fun isSmallScreen(): Boolean = LocalConfiguration.current.screenHeightDp < SMALL_SCREEN_DP
+
+private const val EDGE_MARGIN_FRACTION = 0.052f
+
+/**
+ * Opacidad de los elementos en el borde de la lista. La de Wear por defecto (0,5) dejaba el texto
+ * secundario (etiquetas de sección, notas) por debajo del contraste verificado en DesignTokensTest
+ * cuando queda cerca del borde en la primera vista; 0,8 conserva el efecto sin volverlo ilegible.
+ */
+const val LIST_EDGE_ALPHA = 0.8f
+private const val SMALL_SCREEN_DP = 210
+
 /**
  * Pantalla estándar para reloj redondo: TimeText + ScalingLazyColumn + indicador de posición.
  * En Wear Compose 1.4 `ScalingLazyColumn` trae soporte de corona/rotary activado por defecto
  * (parámetro `rotaryScrollableBehavior`).
+ *
+ * [topAligned]: el contenido empieza bajo la hora (como Trayecto/SOS) en lugar de centrar el
+ * segundo elemento; para pantallas cuyo primer bloque es alto (p. ej. el perfil), que si no
+ * empujaría el título encima de TimeText.
  */
 @Composable
-fun CaminoScreen(content: ScalingLazyListScope.() -> Unit) {
+fun CaminoScreen(topAligned: Boolean = false, content: ScalingLazyListScope.() -> Unit) {
     val listState = rememberScalingLazyListState()
+    val side = listHorizontalPadding()
     Scaffold(
         // Fondo explícito del tema (la ventana es negra; Perla necesita su fondo claro).
         modifier = Modifier.background(LocalPalette.current.background.toColor()),
@@ -46,11 +85,25 @@ fun CaminoScreen(content: ScalingLazyListScope.() -> Unit) {
         vignette = vignetteFor(LocalThemeId.current),
         positionIndicator = { PositionIndicator(scalingLazyListState = listState) },
     ) {
-        ScalingLazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            state = listState,
-            content = content,
-        )
+        if (topAligned) {
+            ScalingLazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                state = listState,
+                contentPadding = PaddingValues(start = side, end = side, top = timeTextSpace() + 4.dp, bottom = 40.dp),
+                anchorType = ScalingLazyListAnchorType.ItemStart,
+                autoCentering = null,
+                scalingParams = ScalingLazyColumnDefaults.scalingParams(edgeAlpha = LIST_EDGE_ALPHA),
+                content = content,
+            )
+        } else {
+            ScalingLazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                state = listState,
+                contentPadding = PaddingValues(horizontal = side),
+                scalingParams = ScalingLazyColumnDefaults.scalingParams(edgeAlpha = LIST_EDGE_ALPHA),
+                content = content,
+            )
+        }
     }
 }
 
@@ -85,6 +138,7 @@ fun ValueText(
         textAlign = TextAlign.Center,
         modifier = Modifier
             .fillMaxWidth()
+            .padding(horizontal = roundTextInset())
             .clearAndSetSemantics { contentDescription = spoken },
     )
 }
@@ -95,7 +149,9 @@ fun CenteredText(text: String, style: TextStyle = MaterialTheme.typography.body2
         text = text,
         style = style,
         textAlign = TextAlign.Center,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = roundTextInset()),
     )
 }
 

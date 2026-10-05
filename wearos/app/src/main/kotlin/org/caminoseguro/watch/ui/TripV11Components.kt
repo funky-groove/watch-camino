@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -27,12 +28,14 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -142,12 +145,53 @@ fun PrimaryStats(active: ActiveStageUi, isDemo: Boolean) {
             color = palette.textPrimary.toColor(),
             textAlign = TextAlign.Center,
         )
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            MiniStat(stringResource(R.string.trip_label_moving_time), f.duration(moving), Modifier.weight(1f))
-            MiniStat(paceLabel, paceText, Modifier.weight(1f))
+        AdaptiveStats(
+            listOf(
+                stringResource(R.string.trip_label_moving_time) to f.duration(moving),
+                paceLabel to paceText,
+            ),
+        )
+    }
+}
+
+/**
+ * Cifras en columnas (2 o 3) si caben; si no (letra grande del sistema o reloj estrecho), en UNA
+ * columna. Se mide el ancho real de etiqueta y valor en una línea con la letra efectiva, así que
+ * nunca se corta una palabra ni se reduce el tamaño de letra. Sin semántica propia.
+ */
+@Composable
+fun AdaptiveStats(stats: List<Pair<String, String>>) {
+    val density = LocalDensity.current
+    val measurer = rememberTextMeasurer()
+    val labelStyle = MaterialTheme.typography.caption2.copy(letterSpacing = MiniStatLabelSpacing)
+    val valueStyle = MaterialTheme.typography.title3.tabular()
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val widestPx = stats.maxOf { (label, value) ->
+            maxOf(
+                measurer.measure(label.uppercase(), labelStyle, softWrap = false, maxLines = 1).size.width,
+                measurer.measure(value, valueStyle, softWrap = false, maxLines = 1).size.width,
+            )
+        }
+        val widest = with(density) { widestPx.toDp() }
+        val stacked = density.fontScale > LARGE_FONT_SCALE || widest + MiniStatGap > maxWidth / stats.size
+        if (stacked) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                stats.forEach { (label, value) ->
+                    MiniStat(label, value, Modifier.fillMaxWidth().padding(top = 2.dp))
+                }
+            }
+        } else {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                stats.forEach { (label, value) -> MiniStat(label, value, Modifier.weight(1f)) }
+            }
         }
     }
 }
+
+/** A partir de este tamaño de letra del sistema las cifras van siempre en una columna. */
+private const val LARGE_FONT_SCALE = 1.15f
+private val MiniStatGap = 6.dp
+private val MiniStatLabelSpacing = 0.4.sp
 
 /** Etiqueta pequeña + valor (sin semántica propia: la da el contenedor). */
 @Composable
@@ -157,10 +201,9 @@ fun MiniStat(label: String, value: String, modifier: Modifier = Modifier) {
         Text(
             text = label.uppercase(),
             style = MaterialTheme.typography.caption2,
-            letterSpacing = 0.4.sp,
+            letterSpacing = MiniStatLabelSpacing,
             color = palette.textSecondary.toColor(),
             textAlign = TextAlign.Center,
-            maxLines = 2,
         )
         Text(
             text = value,
@@ -201,11 +244,13 @@ fun AltitudeBlock(active: ActiveStageUi) {
             .fillMaxWidth()
             .clearAndSetSemantics { contentDescription = spoken },
     ) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            MiniStat(altitudeLabel, altitude?.let { f.elevation(it) } ?: noData, Modifier.weight(1f))
-            MiniStat(ascentLabel, ascent, Modifier.weight(1f))
-            MiniStat(descentLabel, descent, Modifier.weight(1f))
-        }
+        AdaptiveStats(
+            listOf(
+                altitudeLabel to (altitude?.let { f.elevation(it) } ?: noData),
+                ascentLabel to ascent,
+                descentLabel to descent,
+            ),
+        )
         val note = when {
             altitude == null -> stringResource(R.string.trip_altitude_none)
             active.altitudeStale -> stringResource(R.string.trip_altitude_stale)
@@ -216,7 +261,10 @@ fun AltitudeBlock(active: ActiveStageUi) {
             style = MaterialTheme.typography.caption2,
             color = (if (altitude != null && active.altitudeStale) palette.warning else palette.textSecondary).toColor(),
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 2.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = roundTextInset())
+                .padding(top = 2.dp),
         )
     }
 }
