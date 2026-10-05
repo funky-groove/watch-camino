@@ -408,3 +408,41 @@ no hay API pública verificada para abrir el editor de esfera desde una app de r
 Lista con filtros mínimos (todos / agua / alojamiento), estados (sin ubicación, sin resultados, datos de
 demostración/caché). Ficha: nombre, categoría, distancia y método ("en línea recta"), «Llamar» sólo si el POI
 tiene `phone` válido (E.164 o 9 dígitos españoles; los datos actuales no tienen teléfonos → no aparece).
+
+## K. Bienvenida visual con recurso de marca remoto
+
+**Lo controla el backoffice: sólo la imagen.** Duración y condiciones están fijadas en código.
+
+**Estado del origen remoto: BLOQUEADO** (no hay contrato; Wear OS no declara `INTERNET`). Puerto
+`BrandAssetSource` con adaptador `BlockedBrandAssetSource` (no descarga nada). La app usa siempre
+el logo incluido hasta que exista el endpoint; entonces se añade un adaptador HTTP sin tocar el resto.
+
+### K.1 Caché y validación (núcleo, puro y testado)
+
+- Descarga **sólo en segundo plano**, nunca al abrir ni bloqueando la interfaz; resultado a un fichero
+  temporal y, si es válido, sustitución atómica de la caché. Al abrir se lee **sólo la caché local**.
+- Validación (`BrandAssetValidator`), todo obligatorio:
+  - bytes ≤ 512 KiB y > 0;
+  - firma PNG (`89 50 4E 47 0D 0A 1A 0A`) y cabecera IHDR legible;
+  - dimensiones cuadradas entre 256 y 2048 px;
+  - si el manifiesto del backoffice incluye `sha256`, debe coincidir (hex, minúsculas);
+  - la plataforma además debe poder decodificar la imagen (si falla → inválida).
+- Caché inválida o ausente → **logo incluido**. Un recurso inválido nunca sustituye a uno válido.
+- Metadatos de caché: `sha256`, `width`, `height`, `bytes`, `fetchedAt`. Sin datos personales.
+
+### K.2 Cuándo se muestra (`WelcomePolicy.shouldShow`)
+
+Se muestra sólo si TODO se cumple:
+1. apertura **desde cero** del proceso (no al volver de segundo plano);
+2. **no** hay trayecto activo (ni recién restaurado);
+3. la apertura **no** viene de un enlace directo (complicación, widget, notificación) ni de SOS;
+4. no se ha mostrado ya en este proceso.
+
+### K.3 Presentación
+
+- Capa superpuesta sobre la interfaz **ya construida**: no retrasa datos ni impide tocar
+  (no captura toques; un toque la descarta). Sin duración mínima.
+- Duración máxima **1,0 s**: visible 0,6 s + desvanecimiento 0,4 s.
+- Con **reducción de movimiento** activa: sin animación; la capa se retira de golpe a los 0,6 s.
+- Accesibilidad: decorativa, oculta a lectores de pantalla; no roba el foco.
+- La pantalla de lanzamiento del sistema no se modifica.
