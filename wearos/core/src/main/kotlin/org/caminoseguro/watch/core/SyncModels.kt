@@ -34,6 +34,11 @@ sealed interface SyncPayload {
         val steps: Int,
         val distanceMeters: Int,
         val activeSeconds: Int,
+        // V1.1: agregados enteros (nunca el perfil ni posiciones). Por defecto 0 para colas V1.
+        val movingSeconds: Int = 0,
+        val pausedSeconds: Int = 0,
+        val ascentMeters: Int = 0,
+        val descentMeters: Int = 0,
     ) : SyncPayload
 }
 

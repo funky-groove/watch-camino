@@ -1,9 +1,12 @@
 package org.caminoseguro.watch.ui
 
 import android.app.Application
+import android.os.CancellationSignal
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -15,12 +18,21 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.caminoseguro.watch.AppContainer
 import org.caminoseguro.watch.CaminoApplication
+import org.caminoseguro.watch.core.ActionGate
+import org.caminoseguro.watch.core.EmergencyLocationPermission
+import org.caminoseguro.watch.core.EmergencyLocationSummary
 import org.caminoseguro.watch.core.FinishOutcome
+import org.caminoseguro.watch.core.LocationFix
 import org.caminoseguro.watch.core.PoiAlert
+import org.caminoseguro.watch.core.PoiCategory
 import org.caminoseguro.watch.core.SessionSnapshot
 import org.caminoseguro.watch.core.Stage
 import org.caminoseguro.watch.core.StartOutcome
+import org.caminoseguro.watch.core.StorageIssue
+import org.caminoseguro.watch.core.SosPresentation
+import org.caminoseguro.watch.core.SosViewState
 import org.caminoseguro.watch.core.SyncSnapshot
+import org.caminoseguro.watch.core.ThemeId
 import org.caminoseguro.watch.platform.Permissions
 import org.caminoseguro.watch.platform.PermissionsState
 import org.caminoseguro.watch.platform.SensorsState
@@ -38,6 +50,15 @@ data class CaminoUiState(
     val lastAlert: PoiAlert? = null,
     val permissions: PermissionsState = PermissionsState(location = true, activityRecognition = true, notifications = true),
     val sensors: SensorsState = SensorsState(),
+    /** Errores de almacenamiento recuperables (V-01, V-03). */
+    val storageIssues: Set<StorageIssue> = emptySet(),
+    /** Categorías de POI que avisan (Ajustes, V-08). */
+    val alertCategories: Set<PoiCategory> = PoiCategory.entries.toSet(),
+)
+
+private data class SettingsInputs(
+    val storageIssues: Set<StorageIssue>,
+    val alertCategories: Set<PoiCategory>,
 )
 
 private data class CoreInputs(
@@ -90,8 +111,16 @@ class CaminoViewModel(
         container.runtime.sensors,
     ) { sync, summary, now, perms, sensors -> ExtraInputs(sync, summary, now, perms, sensors) }
 
-    val ui: StateFlow<CaminoUiState> = combine(core, extra, selectedStageId, lastAlert) { c, e, selectedId, alert ->
-        val active = Presentation.activeStage(c.snapshot, c.stages, c.pois, c.latestFix, e.now)
+    private val settings = combine(controller.storageIssues, controller.alertCategoriesState) { issues, cats ->
+        SettingsInputs(issues, cats)
+    }
+
+    val ui: StateFlow<CaminoUiState> = combine(core, extra, selectedStageId, lastAlert, settings) { c, e, selectedId, alert, st ->
+        val active = Presentation.activeStage(
+            c.snapshot, c.stages, c.pois, c.latestFix, e.now,
+            locationAvailable = e.permissions.location,
+            stepsAvailable = e.sensors.hasStepSensor && e.permissions.activityRecognition,
+        )
         CaminoUiState(
             ready = c.ready,
             isDemo = container.isDemo,
@@ -104,8 +133,113 @@ class CaminoViewModel(
             lastAlert = if (active != null) alert else null,
             permissions = e.permissions,
             sensors = e.sensors,
+            storageIssues = st.storageIssues,
+            alertCategories = st.alertCategories,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CaminoUiState(isDemo = container.isDemo))
+
+    /** Tema elegido en Ajustes (Negro por defecto, persistido). */
+    val theme: StateFlow<ThemeId> = container.theme
+
+    fun setTheme(theme: ThemeId) {
+        container.setTheme(theme)
+    }
+
+    // ------------------------------------------------------------ Iniciar trayecto sin doble inicio
+
+    /** «Iniciar trayecto»: el primer toque abre el flujo; los siguientes se ignoran hasta volver a Inicio. */
+    private val startFlowGate = ActionGate()
+    private val _startFlowBusy = MutableStateFlow(false)
+    val startFlowBusy: StateFlow<Boolean> = _startFlowBusy.asStateFlow()
+
+    /** `true` si este toque inicia el flujo (permisos → elegir etapa); `false` si ya estaba en marcha. */
+    fun beginStartFlow(): Boolean {
+        if (state().active != null) return false
+        val entered = startFlowGate.tryEnter()
+        _startFlowBusy.value = startFlowGate.isBusy
+        return entered
+    }
+
+    /** Al volver a Inicio (o tras iniciar/cancelar): se puede volver a pulsar. */
+    fun resetStartFlow() {
+        startFlowGate.reset()
+        _startFlowBusy.value = false
+    }
+
+    /** Confirmación de inicio: un solo `controller.start` en vuelo. */
+    private val confirmStartGate = ActionGate()
+
+    private fun state(): CaminoUiState = ui.value
+
+    // ------------------------------------------------------------ SOS (no toca el trayecto)
+
+    private val sos = container.sos
+    private val sosFix = MutableStateFlow<LocationFix?>(null)
+    private val sosPermission = MutableStateFlow(EmergencyLocationPermission.NOT_DETERMINED)
+    private var sosSignal: CancellationSignal? = null
+
+    private val sosTicker = flow {
+        while (true) {
+            emit(Instant.now())
+            delay(SOS_TICK_MS)
+        }
+    }
+
+    val sosState: StateFlow<SosViewState> = combine(
+        sos.lastResult,
+        sosFix,
+        controller.latestFix,
+        sosPermission,
+        sosTicker,
+    ) { result, readFix, tripFix, permission, now ->
+        val best = EmergencyLocationSummary.newest(readFix, tripFix?.normalizedAccuracy())
+        SosPresentation.state(
+            number = sos.number,
+            capability = container.telephony,
+            lastResult = result,
+            location = EmergencyLocationSummary.of(best, now, permission),
+        )
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5_000),
+        SosPresentation.state(
+            sos.number,
+            container.telephony,
+            null,
+            EmergencyLocationSummary.of(null, Instant.now(), EmergencyLocationPermission.NOT_DETERMINED),
+        ),
+    )
+
+    /**
+     * Al abrir la pantalla SOS: sin mensajes anteriores, última ubicación conocida y UNA lectura
+     * si hay permiso. No pide permiso, no espera al GPS y no bloquea el botón.
+     */
+    fun onSosOpened() {
+        sos.reset()
+        val reader = container.emergencyLocation
+        sosPermission.value = reader.permission()
+        val known = reader.lastKnown()
+        if (known != null) sosFix.value = EmergencyLocationSummary.newest(sosFix.value, known)
+        sosSignal?.cancel()
+        sosSignal = reader.requestCurrent { fix ->
+            if (fix != null) sosFix.value = EmergencyLocationSummary.newest(sosFix.value, fix)
+        }
+    }
+
+    fun onSosClosed() {
+        sosSignal?.cancel()
+        sosSignal = null
+    }
+
+    /** «Llamar al 112»: entrega `ACTION_DIAL tel:112` al sistema. No pausa ni finaliza el trayecto. */
+    fun dialEmergency() {
+        sos.dial()
+    }
+
+    override fun onCleared() {
+        onSosClosed()
+        super.onCleared()
+    }
 
     private val _events = MutableStateFlow<UiEvent?>(null)
     val events: StateFlow<UiEvent?> = _events.asStateFlow()
@@ -128,22 +262,58 @@ class CaminoViewModel(
 
     fun confirmStart() {
         val id = selectedStageId.value ?: return
-        viewModelScope.launch {
-            when (val out = controller.start(id)) {
-                is StartOutcome.Started -> {
-                    lastAlert.value = null
-                    _events.value = UiEvent.Started
-                }
-                is StartOutcome.Rejected -> _events.value = UiEvent.Rejected(out.error.name)
+        if (!confirmStartGate.tryEnter()) return
+        launchGuarded {
+            try {
+                startStage(id)
+            } finally {
+                confirmStartGate.reset()
             }
         }
     }
 
+    private suspend fun startStage(id: String) {
+        when (val out = controller.start(id)) {
+            is StartOutcome.Started -> {
+                lastAlert.value = null
+                _events.value = UiEvent.Started
+            }
+            is StartOutcome.Rejected -> _events.value = UiEvent.Rejected(out.error.name)
+            // El aviso de error se ve en Inicio (storageIssues).
+            StartOutcome.StorageFailed -> _events.value = UiEvent.Rejected(STORAGE)
+        }
+    }
+
     fun confirmFinish() {
-        viewModelScope.launch {
+        launchGuarded {
             when (val out = controller.finish()) {
                 is FinishOutcome.Finished -> _events.value = UiEvent.Finished
                 is FinishOutcome.Rejected -> _events.value = UiEvent.Rejected(out.error.name)
+                // La etapa sigue activa; el aviso de error se ve en la pantalla de etapa.
+                FinishOutcome.StorageFailed -> _events.value = UiEvent.Rejected(STORAGE)
+            }
+        }
+    }
+
+    fun dismissStorageIssue(issue: StorageIssue) {
+        controller.dismissStorageIssue(issue)
+    }
+
+    fun setAlertCategory(category: PoiCategory, enabled: Boolean) {
+        container.setAlertCategory(category, enabled)
+    }
+
+    /** V-01: un fallo inesperado se muestra como error recuperable, nunca cierra la app. */
+    private fun launchGuarded(block: suspend () -> Unit) {
+        viewModelScope.launch {
+            try {
+                block()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w(TAG, "Acción fallida: ${e.javaClass.simpleName}")
+                controller.reportStorageFailure()
+                _events.value = UiEvent.Rejected(STORAGE)
             }
         }
     }
@@ -164,7 +334,7 @@ class CaminoViewModel(
     }
 
     fun onBackground() {
-        container.appScope.launch { controller.flush() }
+        container.appScope.launch { controller.flush() } // flush() no lanza; appScope tiene crashGuard
     }
 
     private fun refreshPermissions() {
@@ -181,6 +351,9 @@ class CaminoViewModel(
 
     private companion object {
         const val TICK_MS = 10_000L
+        const val SOS_TICK_MS = 5_000L
+        const val TAG = "CaminoViewModel"
+        const val STORAGE = "storage"
     }
 }
 
@@ -189,3 +362,7 @@ sealed interface UiEvent {
     data object Finished : UiEvent
     data class Rejected(val reason: String) : UiEvent
 }
+
+/** El seguimiento usa `Double.MAX_VALUE` para "precisión desconocida"; en SOS se muestra sin precisión. */
+private fun LocationFix.normalizedAccuracy(): LocationFix =
+    if (accuracyMeters >= Double.MAX_VALUE) copy(accuracyMeters = 0.0) else this

@@ -1,5 +1,6 @@
 package org.caminoseguro.watch.core
 
+import kotlinx.serialization.builtins.SetSerializer
 import kotlinx.serialization.json.Json
 
 /** Codificación JSON de la persistencia local y de los fixtures. */
@@ -27,6 +28,13 @@ object CaminoJson {
 
     fun decodeStepCounter(text: String): StepCounterState =
         json.decodeFromString(StepCounterState.serializer(), text)
+
+    /** Ajustes: categorías de POI que avisan (V-08). */
+    fun encodeCategories(categories: Set<PoiCategory>): String =
+        json.encodeToString(SetSerializer(PoiCategory.serializer()), categories)
+
+    fun decodeCategories(text: String): Set<PoiCategory> =
+        json.decodeFromString(SetSerializer(PoiCategory.serializer()), text)
 
     fun encodeEvent(event: SyncEvent): String =
         json.encodeToString(SyncEvent.serializer(), event)

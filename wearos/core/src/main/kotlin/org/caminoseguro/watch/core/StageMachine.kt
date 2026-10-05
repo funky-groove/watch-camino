@@ -6,7 +6,7 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 
 @Suppress("EnumEntryName")
-enum class SessionError { alreadyActive, unknownStage, notActive }
+enum class SessionError { alreadyActive, unknownStage, notActive, alreadyPaused, notPaused }
 
 /**
  * Resultado de aplicar un comando. Si [error] no es null, [snapshot] es el de entrada sin cambios
@@ -52,14 +52,14 @@ class StageMachine(private val ids: IdGenerator) {
     }
 
     /**
-     * §5 + §6. [now] es el instante para el límite de ritmo de avisos; [pois] los de la etapa activa.
+     * §5 + §6 + V1.1 §C–F. [now] es el instante para el límite de ritmo de avisos; [pois] los de la
+     * etapa activa. En pausa sólo se evalúan los avisos POI (ninguna métrica cambia).
      */
     fun updateLocation(current: SessionSnapshot, fix: LocationFix, now: Instant, pois: List<Poi>): Transition {
         val session = current.activeSession ?: return Transition(current, error = SessionError.notActive)
         if (!DistanceAccumulator.isAccurateEnough(fix)) return Transition(current)
 
-        val acc = DistanceAccumulator.apply(session.distanceMeters, session.lastFix, fix)
-        var next = session.copy(distanceMeters = acc.distanceMeters, lastFix = acc.lastFix)
+        var next = TripMetrics.applyFix(session, fix)
 
         val stagePois = pois.filter { it.stageId == session.stageId }
         val alert = PoiAlertEngine.evaluate(
@@ -74,6 +74,20 @@ class StageMachine(private val ids: IdGenerator) {
             next = next.copy(alertedPoiIds = next.alertedPoiIds + alert.poi.id, lastAlertAt = now)
         }
         return Transition(current.copy(state = SessionState.Active(next)), alert = alert)
+    }
+
+    /** V1.1 §C: → Pausado. Errores `notActive`, `alreadyPaused`. */
+    fun pause(current: SessionSnapshot, now: Instant): Transition {
+        val session = current.activeSession ?: return Transition(current, error = SessionError.notActive)
+        val next = TripMetrics.pause(session, now) ?: return Transition(current, error = SessionError.alreadyPaused)
+        return Transition(current.copy(state = SessionState.Active(next)))
+    }
+
+    /** V1.1 §C: → En marcha. Errores `notActive`, `notPaused`. */
+    fun resume(current: SessionSnapshot, now: Instant): Transition {
+        val session = current.activeSession ?: return Transition(current, error = SessionError.notActive)
+        val next = TripMetrics.resume(session, now) ?: return Transition(current, error = SessionError.notPaused)
+        return Transition(current.copy(state = SessionState.Active(next)))
     }
 
     fun finish(current: SessionSnapshot, now: Instant): Transition {
@@ -91,6 +105,10 @@ class StageMachine(private val ids: IdGenerator) {
                 steps = summary.steps,
                 distanceMeters = summary.distanceMeters,
                 activeSeconds = summary.activeSeconds,
+                movingSeconds = summary.movingSeconds,
+                pausedSeconds = summary.pausedSeconds,
+                ascentMeters = summary.ascentMeters,
+                descentMeters = summary.descentMeters,
             ),
         )
         return Transition(
@@ -108,14 +126,25 @@ class StageMachine(private val ids: IdGenerator) {
             return max(0L, s).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
         }
 
-        fun summarize(session: StageSession, finishedAt: Instant): SessionSummary = SessionSummary(
-            sessionId = session.sessionId,
-            stageId = session.stageId,
-            startedAt = session.startedAt,
-            finishedAt = finishedAt,
-            steps = max(0, session.steps),
-            distanceMeters = max(0.0, session.distanceMeters).roundToInt(),
-            activeSeconds = activeSeconds(session.startedAt, finishedAt),
-        )
+        /** Cierra la pausa en curso (si la hay) y resume. Enteros V1.1 con redondeo half-up. */
+        fun summarize(session: StageSession, finishedAt: Instant): SessionSummary {
+            val closed = TripMetrics.closePause(session, finishedAt)
+            val active = activeSeconds(session.startedAt, finishedAt)
+            return SessionSummary(
+                sessionId = closed.sessionId,
+                stageId = closed.stageId,
+                startedAt = closed.startedAt,
+                finishedAt = finishedAt,
+                steps = max(0, closed.steps),
+                distanceMeters = max(0.0, closed.distanceMeters).roundToInt(),
+                activeSeconds = active,
+                // §D: tiempo en movimiento ≤ duración (también si el reloj ha ido hacia atrás).
+                movingSeconds = halfUp(closed.movingSeconds).coerceAtMost(active),
+                pausedSeconds = halfUp(closed.pausedSeconds),
+                ascentMeters = halfUp(closed.ascentMeters),
+                descentMeters = halfUp(closed.descentMeters),
+                profile = closed.profile,
+            )
+        }
     }
 }

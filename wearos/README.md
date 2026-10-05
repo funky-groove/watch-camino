@@ -57,6 +57,11 @@ wearos/
 │   │                           stores en memoria, relojes, generadores de id
 │   ├── StepCounterNormalizer.kt  baseline/offset de TYPE_STEP_COUNTER (reinicios del reloj)
 │   ├── CaminoStats.kt          estadísticas, etapa sugerida, km restantes
+│   ├── TripFigures.kt          cifras del trayecto sin ceros falsos + ActionGate (sin doble inicio)
+│   ├── EmergencyInfo.kt        SOS: EmergencyNumber (112 ES/UE), DialResult, EmergencyDialer,
+│   │                           FakeEmergencyDialer, EmergencyLocationSummary (paridad watchOS)
+│   ├── SosPresentation.kt      SosController + texto «Llamar/Marcar 112» y mensajes honestos
+│   ├── DesignTokens.kt         paleta Negro/Perla (mismos hex que watchOS) + requisitos de contraste
 │   └── CaminoController.kt     servicio de aplicación: máquina + stores + sync con StateFlow
 │   └── src/test/               un test por fichero de shared/conformance/*.json + tests propios
 └── app/                        Wear OS (minSdk 30, target/compileSdk 35)
@@ -98,7 +103,7 @@ Cuando llegue el contrato se añade un adaptador `HttpCaminoApi` en `src/release
 
 ## Plataforma (resumen)
 
-- Permisos pedidos al pulsar **Comenzar etapa** (no al abrir). Si se deniegan, la etapa empieza
+- Permisos pedidos al pulsar **Iniciar trayecto** (no al abrir). Si se deniegan, la etapa empieza
   igual y la pantalla de etapa dice qué falta (sin ubicación: ni distancia ni avisos; sin actividad:
   sin pasos; sin notificaciones: avisos sólo en pantalla).
 - Sensores y foreground service (`location`, notificación en curso) **sólo** con sesión activa.
@@ -114,3 +119,35 @@ Cuando llegue el contrato se añade un adaptador `HttpCaminoApi` en `src/release
 - Restauración: al relanzar se restaura la sesión `Active` y se reenganchan sensores y servicio.
   Sync al arrancar y al volver a primer plano.
 - Logs sin coordenadas, tokens ni identificadores.
+
+## Trayecto y SOS
+
+- **Pantalla principal** (ruta `home`): sin trayecto, «Iniciar trayecto» (lleva a elegir etapa;
+  deshabilitado tras el primer toque + `ActionGate` en el ViewModel) y estado real de permisos; con
+  trayecto, cifras (restante, recorrido, pasos, tiempo; «sin datos» en vez de ceros falsos) en una
+  `ScalingLazyColumn` (corona/bisel por defecto en Wear Compose 1.4) y, al final tras un divisor,
+  «Finalizar trayecto» (confirmación; cancelar conserva los datos).
+- **«SOS»** fijo arriba a la derecha, fuera de la lista (`TripScaffold`): bajo TimeText, fondo opaco,
+  hueco reservado con `contentPadding` medido, objetivo ≥ 48×48 dp, rojo `critical` (≥ 4,5:1 en ambos
+  temas). Abre la ruta `sos`; se vuelve con el gesto/atrás del sistema o «Volver». La posición de
+  scroll de Inicio se conserva (`rememberScalingLazyListState` en la ruta `home`).
+- **Pantalla SOS**: «Llamar al 112» (o «Marcar 112» si el reloj no declara llamadas) →
+  `Intent.ACTION_DIAL tel:112` (`SystemEmergencyDialer`). **Nunca** `ACTION_CALL` ni `CALL_PHONE`
+  ("ACTION_CALL cannot be used to call emergency numbers"). `<queries>` DIAL+`tel` en el manifest.
+  `FEATURE_TELEPHONY(_CALLING)` sólo cambia el texto/aviso, nunca bloquea. Mensajes honestos
+  («Marcador abierto con el 112. Pulsa llamar si es seguro.»). Debajo: ubicación breve (última
+  conocida + una lectura `getCurrentLocation`, sin pedir permiso; no se envía a ningún sitio),
+  «112: España y UE», ayuda genérica del SOS del reloj («varía según el fabricante») y satélite
+  (sólo se menciona). No pausa ni finaliza el trayecto; funciona sin sesión ni backend. No hay
+  continuación en el móvil (`RemoteActivityHelper` sólo admite `ACTION_VIEW`).
+- **Debug/DEMO usa el marcador real**: `FakeEmergencyDialer` es sólo para tests.
+- Estado de verificación: [`docs/accessibility/SOS_CAPABILITY_MATRIX.md`](../docs/accessibility/SOS_CAPABILITY_MATRIX.md).
+
+## Temas e idiomas
+
+- Temas **Negro** (por defecto) y **Perla**, elegidos en Ajustes y persistidos en `theme.json`.
+  `ui/Theme.kt` traduce `core/DesignTokens.kt` a `MaterialTheme` de Wear; el contraste y la paridad
+  de hex con `watchos/.../DesignTokens.swift` se comprueban en `DesignTokensTest` (JVM).
+- Español (`values/`, `tools:locale="es"`) e inglés (`values-en/`) con todas las cadenas.
+  `AppResourcesTest` (en `:core`, sin Android SDK) comprueba claves y marcadores iguales, apóstrofos
+  escapados, que toda `R.string.x` usada existe y que los textos SOS son honestos.

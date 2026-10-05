@@ -23,14 +23,18 @@ object PoiAlertEngine {
         position: GeoPoint,
         accuracyMeters: Double,
     ): PoiAlert? {
-        if (accuracyMeters > DistanceAccumulator.MAX_ACCURACY_M) return null
+        if (!DistanceAccumulator.isUsable(position, accuracyMeters)) return null
         val candidates = pois.asSequence()
             .filter { it.id !in alreadyAlerted }
             .map { PoiDistance(it, Geo.haversineMeters(position, it.location)) }
             .filter { it.distanceMeters <= RADIUS_M }
             .toList()
         if (candidates.isEmpty()) return null
-        if (lastAlertAt != null && secondsBetween(lastAlertAt, now) < MIN_INTERVAL_S) return null
+        if (lastAlertAt != null) {
+            // §6.3: si el reloj ha ido hacia atrás (intervalo negativo) no se bloquea.
+            val elapsed = secondsBetween(lastAlertAt, now)
+            if (elapsed >= 0.0 && elapsed < MIN_INTERVAL_S) return null
+        }
         val best = candidates.minWith(nearestThenId)
         return PoiAlert(best.poi, best.distanceMeters)
     }

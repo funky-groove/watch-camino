@@ -11,6 +11,7 @@ import org.caminoseguro.watch.core.SessionSummary
 import org.caminoseguro.watch.core.Stage
 import org.caminoseguro.watch.core.StageMachine
 import org.caminoseguro.watch.core.SyncStatus
+import org.caminoseguro.watch.core.TripFigures
 import org.caminoseguro.watch.core.Totals
 import java.time.Instant
 
@@ -26,6 +27,8 @@ data class ActiveStageUi(
     /** Null si aún no hay fix (o no quedan POIs sin avisar). */
     val nextPoi: PoiDistance?,
     val hasFix: Boolean,
+    /** Cifras para la pantalla principal, sin ceros falsos (null = "sin datos"). */
+    val figures: TripFigures,
 )
 
 data class StageChoice(val stage: Stage, val suggested: Boolean)
@@ -56,6 +59,8 @@ object Presentation {
         pois: List<Poi>,
         latestFix: LocationFix?,
         now: Instant,
+        locationAvailable: Boolean = true,
+        stepsAvailable: Boolean = true,
     ): ActiveStageUi? {
         val session = snapshot.activeSession ?: return null
         val stage = stages.firstOrNull { it.id == session.stageId }
@@ -70,6 +75,7 @@ object Presentation {
             elapsedSeconds = StageMachine.activeSeconds(session.startedAt, now).toLong(),
             nextPoi = next,
             hasFix = latestFix != null,
+            figures = TripFigures.of(session, stage, now, locationAvailable, stepsAvailable),
         )
     }
 

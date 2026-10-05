@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Camino Seguro</string>
+
+    <!-- DEMO badge (MockCaminoApi) -->
+    <string name="demo_badge">DEMO</string>
+    <string name="demo_badge_a11y">Demo mode: data is not sent to any server</string>
+    <string name="demo_data_notice">Demo stages · approximate coordinates</string>
+
+    <string name="loading">Loading…</string>
+
+    <!-- Home (no trip) -->
+    <string name="home_title">Camino Seguro</string>
+    <string name="action_start_trip">Start trip</string>
+    <string name="action_start_stage">Start trip</string>
+    <string name="action_stats">Statistics</string>
+    <string name="action_sync">Sync</string>
+    <string name="action_settings">Settings</string>
+    <string name="action_back">Back</string>
+
+    <!-- Permissions: short explanation and real state -->
+    <string name="perm_explain">When you start, the watch asks for location (distance and alerts), activity (steps) and notifications.</string>
+    <string name="perm_location_on">Location: allowed</string>
+    <string name="perm_location_off">Location: not allowed</string>
+    <string name="perm_activity_on">Activity: allowed</string>
+    <string name="perm_activity_off">Activity: not allowed</string>
+    <string name="perm_notifications_on">Notifications: allowed</string>
+    <string name="perm_notifications_off">Notifications: not allowed</string>
+
+    <!-- Choose stage -->
+    <string name="select_title">Choose stage</string>
+    <string name="select_suggested">Suggested · %1$s</string>
+    <string name="select_suggested_a11y">Suggested stage, %1$s</string>
+
+    <!-- Confirm start -->
+    <string name="confirm_start_title">Start the trip on this stage?</string>
+    <string name="confirm_start_yes">Start</string>
+    <string name="action_cancel">Cancel</string>
+
+    <!-- Trip in progress -->
+    <string name="trip_label_remaining">Remaining</string>
+    <string name="trip_label_walked">Walked</string>
+    <string name="trip_label_steps">Steps</string>
+    <string name="trip_label_time">Time</string>
+    <string name="stat_unavailable">no data</string>
+    <string name="stat_unavailable_a11y">%1$s: no data</string>
+    <string name="active_remaining">remaining</string>
+    <string name="active_remaining_a11y">%1$s remaining</string>
+    <string name="active_walked">Walked %1$s</string>
+    <string name="active_walked_a11y">Walked: %1$s</string>
+    <string name="active_steps">%1$s steps</string>
+    <string name="active_time">Time %1$s</string>
+    <string name="active_time_a11y">Time: %1$s</string>
+    <string name="active_next_poi">Next: %1$s</string>
+    <string name="active_next_poi_a11y">Next point of interest: %1$s, %2$s, %3$s away</string>
+    <string name="active_no_fix">Finding location…</string>
+    <string name="active_last_alert">Alert: %1$s</string>
+    <string name="action_finish">Finish trip</string>
+    <string name="action_finish_trip">Finish trip</string>
+
+    <!-- Permissions denied: the trip continues with what is available -->
+    <string name="perm_no_location">No location: distance is not measured and there are no point of interest alerts</string>
+    <string name="perm_no_activity">No activity permission: steps are not counted</string>
+    <string name="perm_no_notifications">No notifications: alerts are only shown here</string>
+    <string name="no_step_sensor">This watch has no step counter</string>
+
+    <!-- Confirm finish (cancel keeps the data) -->
+    <string name="confirm_finish_title">Finish the trip?</string>
+    <string name="confirm_finish_yes">Yes, finish</string>
+    <string name="confirm_finish_no">Keep walking</string>
+
+    <!-- Summary -->
+    <string name="summary_title">Trip finished</string>
+    <string name="summary_saved">Saved on the watch · upload pending backend</string>
+    <string name="summary_saved_demo">Saved on the watch · simulated upload (demo)</string>
+    <string name="action_done">Done</string>
+
+    <!-- Statistics -->
+    <string name="stats_title">Statistics</string>
+    <string name="stats_today">Today</string>
+    <string name="stats_today_active">Today (in progress)</string>
+    <string name="stats_today_none">No trips yet</string>
+    <string name="stats_total">Camino total</string>
+    <string name="stats_stages_one">1 trip</string>
+    <string name="stats_stages_many">%1$d trips</string>
+    <string name="stats_distance">Distance %1$s</string>
+    <string name="stats_distance_a11y">Distance: %1$s</string>
+    <string name="stats_steps">%1$s steps</string>
+    <string name="stats_time">Time %1$s</string>
+    <string name="stats_time_a11y">Time: %1$s</string>
+
+    <!-- Sync -->
+    <string name="sync_title">Sync</string>
+    <string name="sync_synced">Synced</string>
+    <string name="sync_synced_demo">Demo · simulated upload</string>
+    <string name="sync_pending_one">1 pending</string>
+    <string name="sync_pending_many">%1$d pending</string>
+    <string name="sync_offline">Offline</string>
+    <string name="sync_blocked">Pending backend</string>
+    <string name="sync_blocked_empty">Nothing pending · no server</string>
+    <string name="sync_needs_link">Needs linking</string>
+    <string name="sync_syncing">Syncing…</string>
+    <string name="sync_queued_one">1 event saved on the watch</string>
+    <string name="sync_queued_many">%1$d events saved on the watch</string>
+    <string name="sync_dead_letters">%1$d rejected</string>
+    <string name="sync_blocked_explain">There is no server yet: data is only saved on the watch and is not sent.</string>
+    <string name="sync_demo_explain">Demo mode: uploads are simulated, there is no real server.</string>
+    <string name="sync_status_a11y">Sync status: %1$s</string>
+    <string name="action_sync_now">Sync now</string>
+
+    <!-- Recoverable storage errors (V-01, V-03) -->
+    <string name="storage_save_failed">Could not save on the watch. The data is still in memory; it will retry.</string>
+    <string name="storage_restore_failed">Could not restore the previous trip. A copy of the damaged file was kept.</string>
+    <string name="action_understood">OK</string>
+
+    <!-- Foreground service not started (V-20) -->
+    <string name="fgs_blocked">Open the app to keep measuring in the background</string>
+
+    <!-- Settings: theme and alerts (V-08) -->
+    <string name="action_alert_settings">Settings</string>
+    <string name="settings_screen_title">Settings</string>
+    <string name="settings_theme">Theme</string>
+    <string name="theme_negro">Black</string>
+    <string name="theme_perla">Pearl</string>
+    <string name="theme_selected">Selected</string>
+    <string name="theme_not_selected">Not selected</string>
+    <string name="settings_title">Alerts by category</string>
+    <string name="settings_explain">Turned-off categories do not alert</string>
+    <string name="settings_on">On</string>
+    <string name="settings_off">Off</string>
+
+    <!-- Point of interest categories -->
+    <string name="poi_water">Water</string>
+    <string name="poi_shelter">Hostel</string>
+    <string name="poi_pharmacy">Pharmacy</string>
+    <string name="poi_health">Health</string>
+    <string name="poi_food">Food</string>
+    <string name="poi_landmark">Landmark</string>
+
+    <!-- Notifications -->
+    <string name="channel_session_name">Trip in progress</string>
+    <string name="channel_session_desc">Ongoing notice while a trip is in progress</string>
+    <string name="channel_poi_name">Point of interest alerts</string>
+    <string name="channel_poi_desc">Water, hostels, pharmacies and other nearby places</string>
+    <string name="notif_session_title">Trip in progress</string>
+    <string name="notif_session_text">Measuring distance and steps</string>
+    <string name="notif_poi_title">Nearby: %1$s</string>
+
+    <!-- SOS: honest wording; never says a call was placed, an emergency was sent or help is coming -->
+    <string name="sos_button">SOS</string>
+    <string name="sos_button_a11y">SOS</string>
+    <string name="sos_button_action">open the emergency screen</string>
+    <string name="sos_title">Emergency</string>
+    <string name="sos_call">Call %1$s</string>
+    <string name="sos_dial">Dial %1$s</string>
+    <string name="sos_call_hint">Opens the watch dialer with the number; you confirm the call.</string>
+    <string name="sos_no_calling_notice">This watch may not make calls by itself; if the dialer does not open, use the watch SOS or your phone.</string>
+    <string name="sos_result_dialer_opened">Dialer opened with 112. Press call if it is safe.</string>
+    <string name="sos_result_no_dialer">This watch did not open the dialer. Use the watch SOS (it varies by manufacturer) or call 112 from your phone.</string>
+    <string name="sos_result_failed">Could not open the dialer. Use the watch SOS (it varies by manufacturer) or call 112 from your phone.</string>
+    <string name="sos_scope">112: Spain and EU</string>
+    <string name="sos_location_section">Your location</string>
+    <string name="sos_location_current">Current location</string>
+    <string name="sos_location_last_known">Last known location</string>
+    <string name="sos_location_stale">Old location: you may no longer be there</string>
+    <string name="sos_location_no_signal">No location available</string>
+    <string name="sos_location_denied">No location permission</string>
+    <string name="sos_location_not_sent">These coordinates are not sent to 112 automatically.</string>
+    <string name="sos_coordinate">%1$s° %2$s</string>
+    <string name="sos_coordinates">%1$s, %2$s</string>
+    <string name="sos_coordinates_a11y">Latitude %1$s degrees %2$s, longitude %3$s degrees %4$s</string>
+    <string name="sos_hemisphere_n">N</string>
+    <string name="sos_hemisphere_s">S</string>
+    <string name="sos_hemisphere_e">E</string>
+    <string name="sos_hemisphere_w">W</string>
+    <string name="sos_hemisphere_n_a11y">north</string>
+    <string name="sos_hemisphere_s_a11y">south</string>
+    <string name="sos_hemisphere_e_a11y">east</string>
+    <string name="sos_hemisphere_w_a11y">west</string>
+    <string name="sos_accuracy">±%1$d m</string>
+    <string name="sos_accuracy_a11y">accuracy of %1$d meters</string>
+    <string name="sos_age_seconds">%1$d s ago</string>
+    <string name="sos_age_minutes">%1$d min ago</string>
+    <string name="sos_age_hours">%1$d h ago</string>
+    <string name="sos_age_second_one_a11y">1 second ago</string>
+    <string name="sos_age_seconds_a11y">%1$d seconds ago</string>
+    <string name="sos_age_minute_one_a11y">1 minute ago</string>
+    <string name="sos_age_minutes_a11y">%1$d minutes ago</string>
+    <string name="sos_age_hour_one_a11y">1 hour ago</string>
+    <string name="sos_age_hours_a11y">%1$d hours ago</string>
+    <string name="sos_native_section">Watch SOS</string>
+    <string name="sos_native_help">Many watches have their own SOS, triggered by pressing a button several times. It varies by manufacturer: check your watch settings.</string>
+    <string name="sos_satellite">On some LTE watches and in supported regions, the watch SOS can send messages via satellite; this app does not control it.</string>
+</resources>

@@ -11,6 +11,17 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <!--
+        SOS: NO se declara CALL_PHONE. ACTION_CALL "cannot be used to call emergency numbers"; el
+        112 se entrega con ACTION_DIAL (el usuario pulsa llamar en el marcador del sistema).
+        Visibilidad del marcador (API 30+) para ACTION_DIAL + tel: (docs/accessibility/SOS_PLATFORM_CAPABILITIES.md §6.1).
+    -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
+            <data android:scheme="tel" />
+        </intent>
+    </queries>
 
     <application
         android:name=".CaminoApplication"

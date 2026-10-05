@@ -1,56 +1,28 @@
 package org.caminoseguro.watch.ui
 
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.wear.compose.foundation.lazy.ScalingLazyListScope
 import androidx.wear.compose.foundation.lazy.items
 import androidx.wear.compose.material.ListHeader
 import androidx.wear.compose.material.MaterialTheme
+import androidx.wear.compose.material.RadioButton
+import androidx.wear.compose.material.Switch
 import androidx.wear.compose.material.Text
+import androidx.wear.compose.material.ToggleChip
 import org.caminoseguro.watch.R
 import org.caminoseguro.watch.core.Formatters
+import org.caminoseguro.watch.core.PoiCategory
+import org.caminoseguro.watch.core.StorageIssue
+import org.caminoseguro.watch.core.ThemeId
 import org.caminoseguro.watch.platform.Notifications
-
-// ------------------------------------------------------------------ Cargando
-
-@Composable
-fun LoadingScreen() {
-    CaminoScreen {
-        item { CenteredText(stringResource(R.string.loading)) }
-    }
-}
-
-// ------------------------------------------------------------------ 1. Inicio (Idle)
-
-@Composable
-fun HomeScreen(
-    state: CaminoUiState,
-    onStart: () -> Unit,
-    onStats: () -> Unit,
-    onSync: () -> Unit,
-) {
-    CaminoScreen {
-        demoBadge(state.isDemo)
-        item { ListHeader { Text(stringResource(R.string.home_title)) } }
-        item { WideChip(text = stringResource(R.string.action_start_stage), onClick = onStart, primary = true) }
-        item { SyncStatusChip(state.sync, onSync) }
-        item { WideChip(text = stringResource(R.string.action_stats), onClick = onStats) }
-    }
-}
 
 // ------------------------------------------------------------------ 2. Elegir etapa
 
@@ -110,112 +82,29 @@ fun ConfirmStartScreen(state: CaminoUiState, onConfirm: () -> Unit, onCancel: ()
     }
 }
 
-// ------------------------------------------------------------------ 3. Etapa activa
-
-@Composable
-fun ActiveStageScreen(
-    state: CaminoUiState,
-    active: ActiveStageUi,
-    onFinish: () -> Unit,
-    onStats: () -> Unit,
-    onSync: () -> Unit,
-) {
-    val haptics = LocalHapticFeedback.current
-    val alert = state.lastAlert
-    LaunchedEffect(alert) {
-        if (alert != null) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+/** Errores de almacenamiento recuperables (V-01, V-03): la app sigue funcionando y lo dice. */
+internal fun ScalingLazyListScope.storageWarnings(state: CaminoUiState, onDismiss: (StorageIssue) -> Unit) {
+    if (StorageIssue.restoreFailed in state.storageIssues) {
+        item { CenteredText(stringResource(R.string.storage_restore_failed), style = MaterialTheme.typography.caption2) }
+        item {
+            WideChip(
+                text = stringResource(R.string.action_understood),
+                onClick = { onDismiss(StorageIssue.restoreFailed) },
+            )
+        }
     }
-
-    CaminoScreen {
-        demoBadge(state.isDemo)
-        item {
-            CenteredText(active.stageName, style = MaterialTheme.typography.caption1)
-        }
-        // Grande: km restantes.
-        item {
-            val remainingSpoken = stringResource(
-                R.string.active_remaining_a11y,
-                Formatters.distanceSpoken(active.remainingMeters),
-            )
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clearAndSetSemantics { contentDescription = remainingSpoken },
-            ) {
-                Text(
-                    text = Formatters.distance(active.remainingMeters),
-                    style = MaterialTheme.typography.display2,
-                    textAlign = TextAlign.Center,
-                )
-                Text(
-                    text = stringResource(R.string.active_remaining),
-                    style = MaterialTheme.typography.caption1,
-                    textAlign = TextAlign.Center,
-                )
-            }
-        }
-        // Secundario: recorrido, pasos, tiempo.
-        item {
-            ValueText(
-                text = stringResource(R.string.active_walked, Formatters.distance(active.walkedMeters)),
-                spoken = stringResource(R.string.active_walked_a11y, Formatters.distanceSpoken(active.walkedMeters)),
-            )
-        }
-        item {
-            ValueText(
-                text = stringResource(R.string.active_steps, Formatters.steps(active.steps)),
-                spoken = Formatters.stepsSpoken(active.steps.toLong()),
-            )
-        }
-        item {
-            ValueText(
-                text = stringResource(R.string.active_time, Formatters.duration(active.elapsedSeconds)),
-                spoken = stringResource(R.string.active_time_a11y, Formatters.durationSpoken(active.elapsedSeconds)),
-            )
-        }
-        // Próximo POI (si hay fix).
-        val next = active.nextPoi
-        if (next != null) {
-            item {
-                val category = stringResource(Notifications.categoryLabel(next.poi.category))
-                ValueText(
-                    text = stringResource(
-                        R.string.active_next_poi,
-                        Formatters.poiAlertText(next.poi, next.distanceMeters),
-                    ),
-                    spoken = stringResource(
-                        R.string.active_next_poi_a11y,
-                        next.poi.name,
-                        category,
-                        Formatters.distanceSpoken(next.distanceMeters),
-                    ),
-                    style = MaterialTheme.typography.body2,
-                )
-            }
-        } else if (!active.hasFix && state.permissions.location) {
-            item { CenteredText(stringResource(R.string.active_no_fix), style = MaterialTheme.typography.caption1) }
-        }
-        if (alert != null) {
-            item {
-                CenteredText(
-                    stringResource(R.string.active_last_alert, Formatters.poiAlertText(alert.poi, alert.distanceMeters)),
-                    style = MaterialTheme.typography.caption1,
-                )
-            }
-        }
-        permissionWarnings(state)
-        item { WideChip(text = stringResource(R.string.action_finish), onClick = onFinish, primary = true) }
-        item { WideChip(text = stringResource(R.string.action_stats), onClick = onStats) }
-        item { SyncStatusChip(state.sync, onSync) }
+    if (StorageIssue.saveFailed in state.storageIssues) {
+        item { CenteredText(stringResource(R.string.storage_save_failed), style = MaterialTheme.typography.caption2) }
     }
 }
 
 /** Si se deniega un permiso, la etapa sigue con lo disponible y la UI lo dice (spec §11). */
-private fun ScalingLazyListScope.permissionWarnings(state: CaminoUiState) {
+internal fun ScalingLazyListScope.permissionWarnings(state: CaminoUiState) {
     val p = state.permissions
     if (!p.location) {
         item { CenteredText(stringResource(R.string.perm_no_location), style = MaterialTheme.typography.caption2) }
+    } else if (state.sensors.foregroundServiceBlocked) {
+        item { CenteredText(stringResource(R.string.fgs_blocked), style = MaterialTheme.typography.caption2) }
     }
     if (!state.sensors.hasStepSensor) {
         item { CenteredText(stringResource(R.string.no_step_sensor), style = MaterialTheme.typography.caption2) }
@@ -281,7 +170,11 @@ fun SummaryScreen(state: CaminoUiState, onDone: () -> Unit) {
                     stringResource(R.string.stats_time_a11y, Formatters.durationSpoken(summary.activeSeconds)),
                 )
             }
-            item { CenteredText(stringResource(R.string.summary_saved), style = MaterialTheme.typography.caption1) }
+            item {
+                // V-09: sin servidor real nunca se promete sincronizar.
+                val saved = if (state.isDemo) R.string.summary_saved_demo else R.string.summary_saved
+                CenteredText(stringResource(saved), style = MaterialTheme.typography.caption1)
+            }
         }
         item { WideChip(text = stringResource(R.string.action_done), onClick = onDone, primary = true) }
     }
@@ -351,7 +244,7 @@ fun SyncScreen(state: CaminoUiState, onSyncNow: () -> Unit) {
         demoBadge(state.isDemo)
         item { ListHeader { Text(stringResource(R.string.sync_title)) } }
         item {
-            val status = syncStatusText(sync)
+            val status = syncStatusText(sync, state.isDemo)
             ValueText(status, stringResource(R.string.sync_status_a11y, status), style = MaterialTheme.typography.title3)
         }
         if (sync.queued > 0) {
@@ -378,6 +271,10 @@ fun SyncScreen(state: CaminoUiState, onSyncNow: () -> Unit) {
             item {
                 CenteredText(stringResource(R.string.sync_blocked_explain), style = MaterialTheme.typography.caption2)
             }
+        } else if (state.isDemo) {
+            item {
+                CenteredText(stringResource(R.string.sync_demo_explain), style = MaterialTheme.typography.caption2)
+            }
         }
         item {
             WideChip(
@@ -386,6 +283,58 @@ fun SyncScreen(state: CaminoUiState, onSyncNow: () -> Unit) {
                 enabled = Presentation.syncLabel(sync.status) != SyncLabel.SYNCING,
                 onClick = onSyncNow,
             )
+        }
+    }
+}
+
+// ------------------------------------------------------------------ 7. Ajustes: tema y avisos (V-08)
+
+/**
+ * Tema (Negro/Perla, persistido; Negro por defecto) y un ToggleChip por categoría de aviso. Las
+ * categorías desactivadas no avisan ni consumen el límite de ritmo (§6).
+ */
+@Composable
+fun SettingsScreen(
+    state: CaminoUiState,
+    theme: ThemeId,
+    onTheme: (ThemeId) -> Unit,
+    onToggle: (PoiCategory, Boolean) -> Unit,
+) {
+    CaminoScreen {
+        demoBadge(state.isDemo)
+        item { ListHeader { Text(stringResource(R.string.settings_screen_title)) } }
+        item { SectionLabel(stringResource(R.string.settings_theme)) }
+        items(ThemeId.entries.toList()) { option ->
+            val selected = option == theme
+            val label = stringResource(if (option == ThemeId.NEGRO) R.string.theme_negro else R.string.theme_perla)
+            ToggleChip(
+                checked = selected,
+                onCheckedChange = { if (it) onTheme(option) },
+                label = { Text(text = label, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+                secondaryLabel = {
+                    Text(stringResource(if (selected) R.string.theme_selected else R.string.theme_not_selected))
+                },
+                toggleControl = { RadioButton(selected = selected) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        item { SectionLabel(stringResource(R.string.settings_title)) }
+        items(PoiCategory.entries.toList()) { category ->
+            val checked = category in state.alertCategories
+            val label = stringResource(Notifications.categoryLabel(category))
+            ToggleChip(
+                checked = checked,
+                onCheckedChange = { onToggle(category, it) },
+                label = { Text(text = "${category.icon} $label", maxLines = 2, overflow = TextOverflow.Ellipsis) },
+                secondaryLabel = {
+                    Text(stringResource(if (checked) R.string.settings_on else R.string.settings_off))
+                },
+                toggleControl = { Switch(checked = checked) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        item {
+            CenteredText(stringResource(R.string.settings_explain), style = MaterialTheme.typography.caption2)
         }
     }
 }

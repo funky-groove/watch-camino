@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="es">
     <string name="app_name">Camino Seguro</string>
 
     <!-- Marca DEMO (MockCaminoApi) -->
@@ -9,11 +9,23 @@
 
     <string name="loading">Cargando…</string>
 
-    <!-- Inicio -->
+    <!-- Inicio (sin trayecto) -->
     <string name="home_title">Camino Seguro</string>
-    <string name="action_start_stage">Comenzar etapa</string>
+    <string name="action_start_trip">Iniciar trayecto</string>
+    <string name="action_start_stage">Iniciar trayecto</string>
     <string name="action_stats">Estadísticas</string>
     <string name="action_sync">Sincronización</string>
+    <string name="action_settings">Ajustes</string>
+    <string name="action_back">Volver</string>
+
+    <!-- Permisos: explicación breve y estado real (texto, no sólo color) -->
+    <string name="perm_explain">Al iniciar se piden ubicación (distancia y avisos), actividad (pasos) y notificaciones.</string>
+    <string name="perm_location_on">Ubicación: permitida</string>
+    <string name="perm_location_off">Ubicación: no permitida</string>
+    <string name="perm_activity_on">Actividad: permitida</string>
+    <string name="perm_activity_off">Actividad: no permitida</string>
+    <string name="perm_notifications_on">Notificaciones: permitidas</string>
+    <string name="perm_notifications_off">Notificaciones: no permitidas</string>
 
     <!-- Elegir etapa -->
     <string name="select_title">Elegir etapa</string>
@@ -21,11 +33,18 @@
     <string name="select_suggested_a11y">Etapa sugerida, %1$s</string>
 
     <!-- Confirmar inicio -->
-    <string name="confirm_start_title">¿Comenzar esta etapa?</string>
-    <string name="confirm_start_yes">Comenzar</string>
+    <string name="confirm_start_title">¿Iniciar el trayecto en esta etapa?</string>
+    <string name="confirm_start_yes">Iniciar</string>
     <string name="action_cancel">Cancelar</string>
 
-    <!-- Etapa activa -->
+    <!-- Trayecto en curso -->
+    <string name="trip_label_remaining">Restante</string>
+    <string name="trip_label_walked">Recorrido</string>
+    <string name="trip_label_steps">Pasos</string>
+    <string name="trip_label_time">Tiempo</string>
+    <!-- Cifra que el reloj no puede medir: nunca un cero falso -->
+    <string name="stat_unavailable">sin datos</string>
+    <string name="stat_unavailable_a11y">%1$s: sin datos</string>
     <string name="active_remaining">restantes</string>
     <string name="active_remaining_a11y">%1$s restantes</string>
     <string name="active_walked">Recorrido %1$s</string>
@@ -37,32 +56,35 @@
     <string name="active_next_poi_a11y">Próximo punto de interés: %1$s, %2$s, a %3$s</string>
     <string name="active_no_fix">Buscando ubicación…</string>
     <string name="active_last_alert">Aviso: %1$s</string>
-    <string name="action_finish">Finalizar</string>
+    <string name="action_finish">Finalizar trayecto</string>
+    <string name="action_finish_trip">Finalizar trayecto</string>
 
-    <!-- Permisos denegados: la etapa sigue con lo disponible -->
+    <!-- Permisos denegados: el trayecto sigue con lo disponible -->
     <string name="perm_no_location">Sin ubicación: no se mide la distancia ni hay avisos de puntos de interés</string>
     <string name="perm_no_activity">Sin permiso de actividad: no se cuentan los pasos</string>
     <string name="perm_no_notifications">Sin notificaciones: los avisos sólo se ven aquí</string>
     <string name="no_step_sensor">Este reloj no tiene contador de pasos</string>
 
-    <!-- Confirmar fin -->
-    <string name="confirm_finish_title">¿Finalizar la etapa?</string>
+    <!-- Confirmar fin (cancelar conserva los datos) -->
+    <string name="confirm_finish_title">¿Finalizar el trayecto?</string>
     <string name="confirm_finish_yes">Sí, finalizar</string>
     <string name="confirm_finish_no">Seguir caminando</string>
 
     <!-- Resumen -->
-    <string name="summary_title">Etapa finalizada</string>
-    <string name="summary_saved">Guardado · se sincronizará</string>
+    <string name="summary_title">Trayecto finalizado</string>
+    <!-- Sin servidor real (V-09): nunca "se sincronizará" -->
+    <string name="summary_saved">Guardado en el reloj · envío pendiente de backend</string>
+    <string name="summary_saved_demo">Guardado en el reloj · envío simulado (demo)</string>
     <string name="action_done">Listo</string>
 
     <!-- Estadísticas -->
     <string name="stats_title">Estadísticas</string>
     <string name="stats_today">Hoy</string>
     <string name="stats_today_active">Hoy (en curso)</string>
-    <string name="stats_today_none">Aún no hay etapas</string>
+    <string name="stats_today_none">Aún no hay trayectos</string>
     <string name="stats_total">Acumulado del Camino</string>
-    <string name="stats_stages_one">1 etapa</string>
-    <string name="stats_stages_many">%1$d etapas</string>
+    <string name="stats_stages_one">1 trayecto</string>
+    <string name="stats_stages_many">%1$d trayectos</string>
     <string name="stats_distance">Distancia %1$s</string>
     <string name="stats_distance_a11y">Distancia: %1$s</string>
     <string name="stats_steps">%1$s pasos</string>
@@ -72,18 +94,42 @@
     <!-- Sincronización -->
     <string name="sync_title">Sincronización</string>
     <string name="sync_synced">Sincronizado</string>
+    <string name="sync_synced_demo">Demo · envío simulado</string>
     <string name="sync_pending_one">1 pendiente</string>
     <string name="sync_pending_many">%1$d pendientes</string>
     <string name="sync_offline">Sin conexión</string>
     <string name="sync_blocked">Pendiente de backend</string>
+    <string name="sync_blocked_empty">Nada pendiente · sin servidor</string>
     <string name="sync_needs_link">Necesita vincular</string>
     <string name="sync_syncing">Sincronizando…</string>
     <string name="sync_queued_one">1 evento guardado en el reloj</string>
     <string name="sync_queued_many">%1$d eventos guardados en el reloj</string>
     <string name="sync_dead_letters">%1$d rechazados</string>
-    <string name="sync_blocked_explain">El servidor aún no está disponible. No se pierde nada.</string>
+    <string name="sync_blocked_explain">Aún no hay servidor: los datos se guardan sólo en el reloj y no se envían.</string>
+    <string name="sync_demo_explain">Modo demostración: el envío es simulado, no hay servidor real.</string>
     <string name="sync_status_a11y">Estado de sincronización: %1$s</string>
     <string name="action_sync_now">Sincronizar ahora</string>
+
+    <!-- Errores de almacenamiento recuperables (V-01, V-03) -->
+    <string name="storage_save_failed">No se pudo guardar en el reloj. Los datos siguen en memoria; se reintentará.</string>
+    <string name="storage_restore_failed">No se pudo recuperar el trayecto anterior. Se guardó una copia del fichero dañado.</string>
+    <string name="action_understood">Entendido</string>
+
+    <!-- Servicio en primer plano no iniciado (V-20) -->
+    <string name="fgs_blocked">Abre la app para seguir midiendo en segundo plano</string>
+
+    <!-- Ajustes: tema y avisos (V-08) -->
+    <string name="action_alert_settings">Ajustes</string>
+    <string name="settings_screen_title">Ajustes</string>
+    <string name="settings_theme">Tema</string>
+    <string name="theme_negro">Negro</string>
+    <string name="theme_perla">Perla</string>
+    <string name="theme_selected">Seleccionado</string>
+    <string name="theme_not_selected">No seleccionado</string>
+    <string name="settings_title">Avisos por categoría</string>
+    <string name="settings_explain">Las categorías desactivadas no avisan</string>
+    <string name="settings_on">Activado</string>
+    <string name="settings_off">Desactivado</string>
 
     <!-- Categorías de POI (siempre texto, no sólo icono) -->
     <string name="poi_water">Agua</string>
@@ -94,11 +140,62 @@
     <string name="poi_landmark">Monumento</string>
 
     <!-- Notificaciones -->
-    <string name="channel_session_name">Etapa en curso</string>
-    <string name="channel_session_desc">Aviso permanente mientras hay una etapa activa</string>
+    <string name="channel_session_name">Trayecto en curso</string>
+    <string name="channel_session_desc">Aviso permanente mientras hay un trayecto en curso</string>
     <string name="channel_poi_name">Avisos de puntos de interés</string>
     <string name="channel_poi_desc">Agua, albergues, farmacias y otros puntos cercanos</string>
-    <string name="notif_session_title">Etapa en curso</string>
+    <string name="notif_session_title">Trayecto en curso</string>
     <string name="notif_session_text">Midiendo distancia y pasos</string>
     <string name="notif_poi_title">Cerca: %1$s</string>
+
+    <!--
+        SOS. Honestos a propósito (docs/accessibility/SOS_PLATFORM_CAPABILITIES.md): la app abre el
+        marcador con ACTION_DIAL; nunca dice que se haya llamado, que se haya enviado nada ni que
+        llegue ayuda (AppResourcesTest lo comprueba).
+    -->
+    <string name="sos_button">SOS</string>
+    <string name="sos_button_a11y">SOS</string>
+    <string name="sos_button_action">abrir la pantalla de emergencia</string>
+    <string name="sos_title">Emergencia</string>
+    <string name="sos_call">Llamar al %1$s</string>
+    <string name="sos_dial">Marcar %1$s</string>
+    <string name="sos_call_hint">Abre el marcador del reloj con el número; la llamada la confirmas tú.</string>
+    <string name="sos_no_calling_notice">Este reloj puede no tener llamadas propias; si no se abre el marcador, usa el SOS del reloj o tu móvil.</string>
+    <string name="sos_result_dialer_opened">Marcador abierto con el 112. Pulsa llamar si es seguro.</string>
+    <string name="sos_result_no_dialer">Este reloj no ha abierto el marcador. Usa el SOS del reloj (varía según el fabricante) o llama al 112 desde tu móvil.</string>
+    <string name="sos_result_failed">No se pudo abrir el marcador. Usa el SOS del reloj (varía según el fabricante) o llama al 112 desde tu móvil.</string>
+    <string name="sos_scope">112: España y UE</string>
+    <string name="sos_location_section">Tu ubicación</string>
+    <string name="sos_location_current">Ubicación actual</string>
+    <string name="sos_location_last_known">Última ubicación conocida</string>
+    <string name="sos_location_stale">Ubicación antigua: puede que ya no estés ahí</string>
+    <string name="sos_location_no_signal">Sin ubicación disponible</string>
+    <string name="sos_location_denied">Sin permiso de ubicación</string>
+    <string name="sos_location_not_sent">Estas coordenadas no se envían al 112 automáticamente.</string>
+    <!-- Coordenadas: punto decimal siempre (como se dictan) y coma entre latitud y longitud -->
+    <string name="sos_coordinate">%1$s° %2$s</string>
+    <string name="sos_coordinates">%1$s, %2$s</string>
+    <string name="sos_coordinates_a11y">Latitud %1$s grados %2$s, longitud %3$s grados %4$s</string>
+    <string name="sos_hemisphere_n">N</string>
+    <string name="sos_hemisphere_s">S</string>
+    <string name="sos_hemisphere_e">E</string>
+    <string name="sos_hemisphere_w">O</string>
+    <string name="sos_hemisphere_n_a11y">norte</string>
+    <string name="sos_hemisphere_s_a11y">sur</string>
+    <string name="sos_hemisphere_e_a11y">este</string>
+    <string name="sos_hemisphere_w_a11y">oeste</string>
+    <string name="sos_accuracy">±%1$d m</string>
+    <string name="sos_accuracy_a11y">precisión de %1$d metros</string>
+    <string name="sos_age_seconds">hace %1$d s</string>
+    <string name="sos_age_minutes">hace %1$d min</string>
+    <string name="sos_age_hours">hace %1$d h</string>
+    <string name="sos_age_second_one_a11y">hace 1 segundo</string>
+    <string name="sos_age_seconds_a11y">hace %1$d segundos</string>
+    <string name="sos_age_minute_one_a11y">hace 1 minuto</string>
+    <string name="sos_age_minutes_a11y">hace %1$d minutos</string>
+    <string name="sos_age_hour_one_a11y">hace 1 hora</string>
+    <string name="sos_age_hours_a11y">hace %1$d horas</string>
+    <string name="sos_native_section">SOS del reloj</string>
+    <string name="sos_native_help">Muchos relojes tienen un SOS propio que se activa pulsando varias veces un botón. Varía según el fabricante: consulta los ajustes de tu reloj.</string>
+    <string name="sos_satellite">En algunos relojes con LTE y regiones compatibles, el SOS del reloj puede enviar mensajes por satélite; esta app no lo controla.</string>
 </resources>

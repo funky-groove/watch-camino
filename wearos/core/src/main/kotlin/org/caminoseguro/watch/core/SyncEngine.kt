@@ -23,7 +23,13 @@ class SyncEngine(
     private val syncMutex = Mutex()
     private val stateMutex = Mutex()
 
-    private val _snapshot = MutableStateFlow(SyncSnapshot())
+    /**
+     * §7.4: con `BlockedCaminoApi` (Release sin contrato) el estado es siempre `blocked`, también con
+     * la cola vacía: nunca se dice "sincronizado" si no existe servidor (V-02).
+     */
+    private val alwaysBlocked: Boolean = api is BlockedCaminoApi
+
+    private val _snapshot = MutableStateFlow(SyncSnapshot(status = if (alwaysBlocked) SyncStatus.Blocked else SyncStatus.Synced))
     val snapshot: StateFlow<SyncSnapshot> = _snapshot.asStateFlow()
 
     /** Lista de eventIds enviados en la última ejecución (diagnóstico y tests). */
@@ -31,23 +37,35 @@ class SyncEngine(
     var lastRunSent: List<String> = emptyList()
         private set
 
-    /** Carga el estado persistido y publica el estado inicial. */
-    suspend fun load() {
-        val s = stateMutex.withLock { store.load() }
+    /**
+     * Carga el estado persistido y publica el estado inicial. Devuelve `true` si el almacén no pudo
+     * leer la cola anterior (se apartó una copia y se empieza vacía): la UI debe avisar (V-03).
+     */
+    suspend fun load(): Boolean {
+        val (s, unreadable) = stateMutex.withLock { store.load() to store.takeUnreadableNotice() }
         publishIdle(s, keep = null)
+        return unreadable
     }
 
     suspend fun enqueue(events: List<SyncEvent>) {
         if (events.isEmpty()) return
         val s = stateMutex.withLock {
             val cur = store.load()
-            val next = cur.copy(queue = cur.queue + events)
+            // V-04: un `stage_finished` por sesión. Si ya hay uno (p. ej. tras un fallo de guardado
+            // y un reintento de "Finalizar"), no se encola otro con distinto eventId/finishedAt.
+            val finished = (cur.queue + cur.deadLetters)
+                .filter { it.type == SyncEventType.StageFinished }
+                .mapTo(HashSet()) { it.sessionId }
+            val fresh = events.filterNot { it.type == SyncEventType.StageFinished && it.sessionId in finished }
+            if (fresh.isEmpty()) return@withLock cur
+            val next = cur.copy(queue = cur.queue + fresh)
             store.save(next)
             next
         }
         val current = _snapshot.value.status
-        val status = when (current) {
-            SyncStatus.Synced, is SyncStatus.Pending -> SyncStatus.Pending(s.queue.size)
+        val status = when {
+            alwaysBlocked -> SyncStatus.Blocked
+            current == SyncStatus.Synced || current is SyncStatus.Pending -> SyncStatus.Pending(s.queue.size)
             else -> current
         }
         _snapshot.value = SyncSnapshot(status, s.queue.size, s.deadLetters.size)
@@ -64,7 +82,7 @@ class SyncEngine(
         val nextAt = initial.nextAttemptAt
         if (!manual && nextAt != null && now < nextAt) {
             lastRunSent = emptyList()
-            val status = if (initial.queue.isEmpty()) SyncStatus.Synced else SyncStatus.Pending(initial.queue.size)
+            val status = restingStatus(initial)
             _snapshot.value = SyncSnapshot(status, initial.queue.size, initial.deadLetters.size)
             return@withLock status
         }
@@ -115,10 +133,16 @@ class SyncEngine(
         _snapshot.value.status
     }
 
+    private fun restingStatus(s: SyncQueueState): SyncStatus = when {
+        alwaysBlocked -> SyncStatus.Blocked
+        s.queue.isEmpty() -> SyncStatus.Synced
+        else -> SyncStatus.Pending(s.queue.size)
+    }
+
     private fun publishIdle(s: SyncQueueState, keep: SyncStatus?) {
         val status = when (keep) {
             is SyncStatus.Pending -> SyncStatus.Pending(s.queue.size)
-            null -> if (s.queue.isEmpty()) SyncStatus.Synced else SyncStatus.Pending(s.queue.size)
+            null -> restingStatus(s)
             else -> keep
         }
         _snapshot.value = SyncSnapshot(status, s.queue.size, s.deadLetters.size)

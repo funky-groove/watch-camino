@@ -126,7 +126,9 @@ class SyncEngineConformanceTest {
         val store = InMemorySyncQueueStore()
         val engine = SyncEngine(store, BlockedCaminoApi(), MutableClock(epoch(0.0)), NoJitter)
         engine.enqueue(listOf(fakeEvent("e1")))
-        assertEquals(SyncStatus.Pending(1), engine.snapshot.value.status)
+        // §7.4: con BlockedCaminoApi el estado es siempre `blocked` (el contador va en `queued`).
+        assertEquals(SyncStatus.Blocked, engine.snapshot.value.status)
+        assertEquals(1, engine.snapshot.value.queued)
         assertEquals(SyncStatus.Blocked, engine.syncNow(manual = true))
         engine.enqueue(listOf(fakeEvent("e2")))
         assertEquals(SyncStatus.Blocked, engine.snapshot.value.status)

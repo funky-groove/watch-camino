@@ -50,6 +50,20 @@ class PresentationTest {
     }
 
     @Test
+    fun activeStageWithoutSensorsShowsNoFalseZeros() {
+        val session = StageSession("S", "a", t0)
+        val ui = Presentation.activeStage(
+            SessionSnapshot(SessionState.Active(session)), stages, emptyList(), null, t0.plusSeconds(120),
+            locationAvailable = false,
+            stepsAvailable = false,
+        )!!
+        assertNull(ui.figures.walkedMeters)
+        assertNull(ui.figures.remainingMeters)
+        assertNull(ui.figures.steps)
+        assertEquals(120L, ui.figures.elapsedSeconds)
+    }
+
+    @Test
     fun noNextPoiWithoutFix() {
         val session = StageSession("S", "a", t0)
         val pois = listOf(Poi("p2", "a", "Albergue", PoiCategory.shelter, sarria))

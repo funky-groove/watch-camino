@@ -1,5 +1,6 @@
 package org.caminoseguro.watch.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,8 +27,6 @@ import androidx.wear.compose.material.PositionIndicator
 import androidx.wear.compose.material.Scaffold
 import androidx.wear.compose.material.Text
 import androidx.wear.compose.material.TimeText
-import androidx.wear.compose.material.Vignette
-import androidx.wear.compose.material.VignettePosition
 import org.caminoseguro.watch.R
 import org.caminoseguro.watch.core.SyncSnapshot
 import org.caminoseguro.watch.core.SyncStatus
@@ -41,8 +40,10 @@ import org.caminoseguro.watch.core.SyncStatus
 fun CaminoScreen(content: ScalingLazyListScope.() -> Unit) {
     val listState = rememberScalingLazyListState()
     Scaffold(
+        // Fondo explícito del tema (la ventana es negra; Perla necesita su fondo claro).
+        modifier = Modifier.background(LocalPalette.current.background.toColor()),
         timeText = { TimeText() },
-        vignette = { Vignette(vignettePosition = VignettePosition.TopAndBottom) },
+        vignette = vignetteFor(LocalThemeId.current),
         positionIndicator = { PositionIndicator(scalingLazyListState = listState) },
     ) {
         ScalingLazyColumn(
@@ -110,9 +111,10 @@ fun WideChip(
 ) {
     Chip(
         onClick = onClick,
-        label = { Text(text = text, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+        // Hasta 3 líneas: con letra grande del sistema el texto se parte, no se corta.
+        label = { Text(text = text, maxLines = 3, overflow = TextOverflow.Ellipsis) },
         secondaryLabel = if (secondaryText != null) {
-            { Text(text = secondaryText, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+            { Text(text = secondaryText, maxLines = 3, overflow = TextOverflow.Ellipsis) }
         } else {
             null
         },
@@ -124,23 +126,28 @@ fun WideChip(
     )
 }
 
+/**
+ * V-02: nunca "Sincronizado" sin servidor real. Con BlockedCaminoApi el estado es siempre `blocked`
+ * (§7.4); con MockCaminoApi (DEMO) se dice que el envío es simulado.
+ */
 @Composable
-fun syncStatusText(sync: SyncSnapshot): String = when (Presentation.syncLabel(sync.status)) {
-    SyncLabel.SYNCED -> stringResource(R.string.sync_synced)
+fun syncStatusText(sync: SyncSnapshot, isDemo: Boolean): String = when (Presentation.syncLabel(sync.status)) {
+    SyncLabel.SYNCED -> if (isDemo) stringResource(R.string.sync_synced_demo) else stringResource(R.string.sync_synced)
     SyncLabel.PENDING -> {
         val n = (sync.status as? SyncStatus.Pending)?.count ?: sync.queued
         if (n == 1) stringResource(R.string.sync_pending_one) else stringResource(R.string.sync_pending_many, n)
     }
     SyncLabel.OFFLINE -> stringResource(R.string.sync_offline)
-    SyncLabel.BLOCKED -> stringResource(R.string.sync_blocked)
+    SyncLabel.BLOCKED ->
+        if (sync.queued == 0) stringResource(R.string.sync_blocked_empty) else stringResource(R.string.sync_blocked)
     SyncLabel.NEEDS_LINK -> stringResource(R.string.sync_needs_link)
     SyncLabel.SYNCING -> stringResource(R.string.sync_syncing)
 }
 
 /** Fila de estado de sincronización (Inicio / Etapa). */
 @Composable
-fun SyncStatusChip(sync: SyncSnapshot, onClick: () -> Unit) {
-    val status = syncStatusText(sync)
+fun SyncStatusChip(sync: SyncSnapshot, isDemo: Boolean, onClick: () -> Unit) {
+    val status = syncStatusText(sync, isDemo)
     WideChip(
         text = stringResource(R.string.action_sync),
         secondaryText = status,

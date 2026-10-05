@@ -16,7 +16,7 @@ class PoiAlertsConformanceTest {
     @Test
     fun allCases() {
         val cases = data["cases"]!!.arr
-        assertEquals(10, cases.size)
+        assertEquals(11, cases.size)
         for (c in cases) {
             val o = c.obj
             val name = o["name"]!!.s

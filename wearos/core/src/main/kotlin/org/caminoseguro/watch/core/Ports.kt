@@ -15,11 +15,20 @@ interface PoiSource {
 interface SessionStore {
     suspend fun load(): SessionSnapshot
     suspend fun save(snapshot: SessionSnapshot)
+
+    /**
+     * `true` (una sola vez) si la última carga no pudo leer el fichero anterior: el almacén lo apartó
+     * como copia y devolvió el estado vacío. La UI debe avisar al usuario (V-03).
+     */
+    fun takeUnreadableNotice(): Boolean = false
 }
 
 interface SyncQueueStore {
     suspend fun load(): SyncQueueState
     suspend fun save(state: SyncQueueState)
+
+    /** Igual que [SessionStore.takeUnreadableNotice]. */
+    fun takeUnreadableNotice(): Boolean = false
 }
 
 /** Única puerta remota. V1: `BlockedCaminoApi` (Release) y `MockCaminoApi` (Debug). */
