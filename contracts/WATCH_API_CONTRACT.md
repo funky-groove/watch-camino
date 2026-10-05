@@ -70,6 +70,19 @@ Es coherente con el incidente de producción ya identificado en la sesión del b
 *Staged* sin aplicar). **Mientras eso no se corrija, ningún cliente (tampoco el reloj) puede usar rutas
 del API a través del BFF.** No es un problema del reloj.
 
+## Cloudflare Worker (README del repositorio del backend, aportado por el equipo)
+
+- Diseño previsto: PWA → Worker (CORS, rate limit, proxy; inyecta `X-Internal-Token`) → FastAPI.
+- Dominio de ejemplo del README `worker.camino.app`: **no resuelve en DNS** (2026-10-05).
+  `worker.camino-seguro.app` tampoco. `api.camino-seguro.app` resuelve a `camino-seguro-bff.fly.dev`
+  y sus cabeceras (`server: Fly`, `via: fly.io`, sin `cf-ray`) no muestran Cloudflare.
+- Su lista de rutas permitidas sólo cubre certificados, sellos, compras, revocaciones, verificación y
+  JWKS: **no** incluye `/api/auth/*`, `/api/journeys/*` ni `/api/pois/*`, que son las que usa el reloj.
+- También exige `Origin` en `ALLOWED_ORIGINS` (mismo bloqueo B1).
+
+Conclusión: hoy el reloj sólo puede hablar con el BFF de Fly (`api.camino-seguro.app`); el Worker,
+si se reactiva, necesitaría las mismas rutas nativas que el BFF.
+
 ## Qué falta para implementar el adaptador HTTP
 
 1. OpenAPI (o schemas) de las rutas de la tabla.
