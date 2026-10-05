@@ -8,8 +8,12 @@ import CaminoCore
 /// Se eligen con argumentos de lanzamiento (llegan a `UserDefaults.standard` por el
 /// dominio de argumentos, que es volátil y no se guarda):
 ///
-///     -demo.scenario idle|active|nearby|alert|finished
-///     -demo.route    stats|stat-distance|nearby|nearby-water|poi-p01|settings|sync|picker|sos
+///     -demo.scenario idle|active|paused|nearby|alert|finished
+///     -demo.route    stats|stat-distance|nearby|nearby-water|places|poi-p01|settings|settings-face|
+///                    sync|picker|sos|profile|summary|face-prompt
+///
+/// `face-prompt` no es una pantalla: fuerza la hoja «Accede desde tu esfera» (§I) sin sus
+/// condiciones. `summary` muestra el resumen del último trayecto (escenario `finished`).
 ///     -demo.scrollToEnd YES   (pantalla principal desplazada hasta «Finalizar trayecto»)
 ///
 /// Con `-demo.scenario`, `AppEnvironment` usa almacenes EN MEMORIA y un reloj desplazable
@@ -29,6 +33,8 @@ enum DemoScenario {
     enum Kind: String, CaseIterable {
         case idle
         case active
+        /// Como `active`, pero en pausa (V1.1 §C).
+        case paused
         case nearby
         case alert
         case finished
@@ -75,6 +81,23 @@ enum DemoScenario {
     static let activeElapsedSeconds: TimeInterval = 65 * 60
     /// Precisión de todos los fixes de demo (≤ 50 m, pasa el paso 1 de §5).
     static let accuracyMeters: Double = 8
+    /// Precisión vertical de la altitud de demo (≤ 15 m, válida para §E).
+    static let verticalAccuracyMeters: Double = 5
+
+    /// Altitud de demostración del trayecto en curso (fracción 0…1 del recorrido):
+    /// sube de 412 a 448 m (60 % del recorrido) y baja a 430 m. Con la histéresis de 3 m da
+    /// una subida y una bajada reales (≈ 36 m y ≈ 18 m).
+    static func activeAltitude(_ fraction: Double) -> Double {
+        if fraction < 0.6 {
+            return 412 + 36 * (fraction / 0.6)
+        }
+        return 448 - 18 * ((fraction - 0.6) / 0.4)
+    }
+
+    /// Altitud de demostración de la etapa completa (historial): ondulada entre ≈ 300 y 660 m.
+    static func finishedAltitude(_ fraction: Double) -> Double {
+        return 450 + 150 * sin(fraction * 2.6 * Double.pi) + 60 * fraction
+    }
 
     /// Recorrido desde Sarria (inicio de etapa) hacia p01 (Fuente de Barbadelo).
     /// Interpolado cada ≤ 50 m da ≈ 4 165 m acumulados (§5) y termina a ≈ 330 m de p01,
@@ -123,6 +146,13 @@ enum DemoScenario {
             break
         case .active:
             seedActive(model: model, clock: clock, withAlert: false)
+        case .paused:
+            seedActive(model: model, clock: clock, withAlert: false)
+            do {
+                try model.demoController.pause()
+            } catch {
+                Log.app.error("Escenario demo: no se pudo pausar: \(Log.describe(error), privacy: .public)")
+            }
         case .alert:
             seedActive(model: model, clock: clock, withAlert: true)
         case .nearby:
@@ -159,7 +189,7 @@ enum DemoScenario {
         let first = now.addingTimeInterval(-activeElapsedSeconds + 30)
         let last = now.addingTimeInterval(-60)
         let points = interpolate(activeWaypoints, maxStepMeters: 50)
-        for fix in fixes(points, from: first, to: last) {
+        for fix in fixes(points, from: first, to: last, altitude: activeAltitude) {
             model.injectDemoFix(fix)
         }
         if withAlert {
@@ -195,7 +225,7 @@ enum DemoScenario {
         let first = startedAt.addingTimeInterval(30)
         let last = startedAt.addingTimeInterval(finishedDurationSeconds - 30)
         // Directo al controlador: sin notificaciones de avisos pasados.
-        for fix in fixes(points, from: first, to: last) {
+        for fix in fixes(points, from: first, to: last, altitude: finishedAltitude) {
             controller.updateLocation(fix)
         }
         clock.offsetSeconds = finishedStartOffsetSeconds + finishedDurationSeconds
@@ -212,6 +242,16 @@ enum DemoScenario {
     private static func applyRoute(to model: AppModel) {
         guard let raw = UserDefaults.standard.string(forKey: routeKey) else {
             return
+        }
+        switch raw.trimmingCharacters(in: .whitespaces).lowercased() {
+        case "face-prompt":
+            model.presentFaceAccessPromptForDemo()
+            return
+        case "summary":
+            model.presentLatestSummaryForDemo()
+            return
+        default:
+            break
         }
         guard let routes = routes(for: raw) else {
             Log.app.error("Ruta demo desconocida; se ignora")
@@ -237,8 +277,14 @@ enum DemoScenario {
             return [.nearby(waterOnly: false)]
         case "nearby-water":
             return [.nearby(waterOnly: true)]
+        case "places":
+            return [.nearby(waterOnly: false)]
         case "settings":
             return [.settings]
+        case "settings-face":
+            return [.settings, .watchFaceHelp]
+        case "profile":
+            return [.profile]
         case "sync":
             return [.sync]
         case "picker":
@@ -283,8 +329,14 @@ enum DemoScenario {
         return points
     }
 
-    /// Fixes con marcas de tiempo repartidas uniformemente entre `first` y `last`.
-    static func fixes(_ points: [GeoPoint], from first: Date, to last: Date) -> [LocationFix] {
+    /// Fixes con marcas de tiempo repartidas uniformemente entre `first` y `last` y, si se
+    /// da `altitude` (fracción del recorrido → metros), altitud GPS con precisión vertical 5 m.
+    static func fixes(
+        _ points: [GeoPoint],
+        from first: Date,
+        to last: Date,
+        altitude: ((Double) -> Double)? = nil
+    ) -> [LocationFix] {
         let count = points.count
         let span = last.timeIntervalSince(first)
         var result: [LocationFix] = []
@@ -294,7 +346,9 @@ enum DemoScenario {
             result.append(LocationFix(
                 point: point,
                 accuracyMeters: accuracyMeters,
-                timestamp: first.addingTimeInterval(span * fraction)
+                timestamp: first.addingTimeInterval(span * fraction),
+                altitudeMeters: altitude.map { $0(fraction) },
+                verticalAccuracyMeters: altitude == nil ? nil : verticalAccuracyMeters
             ))
         }
         return result

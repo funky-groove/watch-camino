@@ -8,8 +8,9 @@ import CaminoCore
 /// Por eso:
 /// - Sólo ESCRIBE el fichero si cambió algo visible (`WidgetSnapshot.isEquivalent`).
 /// - Sólo pide RECARGAR los timelines (`WidgetCenter.reloadAllTimelines()`), que gasta del
-///   presupuesto diario de WidgetKit, al empezar o terminar una etapa y, durante la etapa,
-///   como mucho cada 15 min o cuando la distancia cambia ≥ 0,5 km desde la última recarga.
+///   presupuesto diario de WidgetKit, al empezar o terminar una etapa, al pausar o reanudar,
+///   al cambiar unidades (o idioma) y, durante la etapa, como mucho cada 15 min o cuando la
+///   distancia cambia ≥ 0,5 km desde la última recarga.
 ///
 /// NO hay actualización continua garantizada: WidgetKit decide cuándo se redibuja la
 /// esfera. El tiempo sí avanza solo (`Text(_, style: .timer)` en el widget).
@@ -63,6 +64,7 @@ enum WidgetBridge {
     private static func makeSnapshot(from model: AppModel, now: Date) -> WidgetSnapshot {
         let last = model.latestSummary
         let lastName = last.map { model.stageName(id: $0.stageId) }
+        let display = model.display
         guard let session = model.activeSession else {
             return WidgetSnapshot(
                 stageName: nil,
@@ -74,7 +76,10 @@ enum WidgetBridge {
                 updatedAt: now,
                 lastStageName: lastName,
                 lastStageMeters: last?.distanceMeters,
-                lastStageSeconds: last?.activeSeconds
+                lastStageSeconds: last?.activeSeconds,
+                isPaused: false,
+                units: display.units.rawValue,
+                lang: display.lang.rawValue
             )
         }
         let planned = model.stage(id: session.stageId).map { Double($0.distanceMeters) } ?? 0
@@ -83,12 +88,16 @@ enum WidgetBridge {
             startedAt: session.startedAt,
             walkedMeters: session.distanceMeters,
             plannedMeters: planned,
-            hasFix: session.lastFix != nil,
+            // En pausa no hay ancla de distancia (`lastFix = nil`), pero no es falta de GPS.
+            hasFix: session.lastFix != nil || session.isPaused,
             isDemo: model.isDemo,
             updatedAt: now,
             lastStageName: lastName,
             lastStageMeters: last?.distanceMeters,
-            lastStageSeconds: last?.activeSeconds
+            lastStageSeconds: last?.activeSeconds,
+            isPaused: session.isPaused,
+            units: display.units.rawValue,
+            lang: display.lang.rawValue
         )
     }
 
@@ -100,6 +109,10 @@ enum WidgetBridge {
         }
         // Empezar / terminar / cambiar de etapa, o pasar a/desde demostración.
         if previous.startedAt != current.startedAt || previous.isDemo != current.isDemo {
+            return true
+        }
+        // Pausar / reanudar y cambiar unidades o idioma: cambia el texto de la esfera.
+        if previous.isPaused != current.isPaused || previous.units != current.units || previous.lang != current.lang {
             return true
         }
         guard current.isActive else {

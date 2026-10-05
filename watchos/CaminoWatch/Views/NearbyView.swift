@@ -2,20 +2,27 @@ import SwiftUI
 import CaminoCore
 import CaminoDesign
 
-/// "Cerca" / "agua cerca": lugares de los datos ordenados por distancia a la última
-/// ubicación conocida, con la calidad de esa ubicación siempre a la vista.
+/// Destino «Lugares» (V1.1 §A, §J): lugares de los datos ordenados por distancia en línea
+/// recta a la última ubicación conocida, con filtro mínimo (todos / agua / alojamiento) y la
+/// calidad de esa ubicación siempre a la vista. Datos de demostración identificados.
 struct NearbyView: View {
     let waterOnly: Bool
 
     @EnvironmentObject private var model: AppModel
     @Environment(\.palette) private var palette
+    @State private var filter: PlaceFilter
+
+    init(waterOnly: Bool) {
+        self.waterOnly = waterOnly
+        _filter = State(initialValue: waterOnly ? .water : .all)
+    }
 
     var body: some View {
         // La antigüedad de la ubicación cambia con el tiempo: se recalcula cada 15 s (sin animación).
         TimelineView(.periodic(from: Date(), by: 15)) { context in
             content(now: context.date)
         }
-        .navigationTitle(waterOnly ? L10n.nearbyTitleWater : L10n.nearbyTitleAll)
+        .navigationTitle(L10n.placesTitle)
         .onAppear {
             // Sin etapa en curso: una sola lectura, sin seguimiento continuo.
             if model.activeSession == nil {
@@ -26,12 +33,15 @@ struct NearbyView: View {
 
     private func content(now: Date) -> some View {
         let quality = model.locationQuality(at: now)
-        let items = model.nearby(waterOnly: waterOnly)
+        let items = model.nearby(filter: filter)
         let denied = model.locationPermission == .denied
         let hasFix = NearbyLocationLine.hasFix(quality)
+        let display = model.display
 
         return ScrollView {
             LazyVStack(alignment: .leading, spacing: Spacing.s) {
+                filterPicker
+
                 ForEach(NearbyLocationLine.lines(quality: quality, permission: model.locationPermission)) { line in
                     NearbyLocationStatus(line: line)
                 }
@@ -63,17 +73,10 @@ struct NearbyView: View {
                 } else {
                     ForEach(items, id: \.poi.id) { item in
                         NavigationLink(value: Route.poi(id: item.poi.id)) {
-                            NearbyPoiRow(item: item, approximate: quality.isApproximate)
+                            NearbyPoiRow(item: item, approximate: quality.isApproximate, display: display)
                         }
                         .buttonStyle(RowButtonStyle())
                     }
-                }
-
-                if waterOnly {
-                    NavigationLink(value: Route.nearby(waterOnly: false)) {
-                        RowLabel(symbol: Icon.nearby, title: L10n.nearbySeeAll)
-                    }
-                    .buttonStyle(RowButtonStyle())
                 }
 
                 Text(L10n.nearbyDemoNote)
@@ -86,27 +89,68 @@ struct NearbyView: View {
         }
     }
 
+    /// Filtro mínimo (una fila nativa que abre la lista de opciones; ocupa poco en 40 mm).
+    private var filterPicker: some View {
+        Picker(selection: $filter) {
+            ForEach(PlaceFilter.allCases, id: \.self) { option in
+                Label(NearbyView.title(option), systemImage: NearbyView.symbol(option))
+                    .tag(option)
+            }
+        } label: {
+            Text(L10n.placesFilterLabel)
+        }
+        .pickerStyle(.navigationLink)
+        .frame(minHeight: Target.minimumHeight)
+    }
+
+    static func title(_ filter: PlaceFilter) -> String {
+        switch filter {
+        case .all:
+            return L10n.placesFilterAll
+        case .water:
+            return L10n.placesFilterWater
+        case .shelter:
+            return L10n.placesFilterShelter
+        }
+    }
+
+    static func symbol(_ filter: PlaceFilter) -> String {
+        switch filter {
+        case .all:
+            return Icon.places
+        case .water:
+            return Icon.category(.water)
+        case .shelter:
+            return Icon.category(.shelter)
+        }
+    }
+
     private var emptyText: String {
         let inStage = model.activeSession != nil
-        if waterOnly {
+        switch filter {
+        case .water:
             return inStage ? L10n.nearbyEmptyWaterStage : L10n.nearbyEmptyWaterAny
+        case .shelter:
+            return inStage ? L10n.placesEmptyShelterStage : L10n.placesEmptyShelterAny
+        case .all:
+            return inStage ? L10n.nearbyEmptyAllStage : L10n.nearbyEmptyAllAny
         }
-        return inStage ? L10n.nearbyEmptyAllStage : L10n.nearbyEmptyAllAny
     }
 }
 
-/// Fila de "Cerca": icono de categoría, nombre (varias líneas si hace falta) y
-/// "categoría · distancia" con cifras monoespaciadas.
+/// Fila de «Lugares»: icono de categoría, nombre (varias líneas si hace falta) y
+/// "categoría · distancia en línea recta" con cifras monoespaciadas.
 private struct NearbyPoiRow: View {
     let item: PoiAlert
     let approximate: Bool
+    let display: UnitDisplay
 
     @Environment(\.palette) private var palette
 
     var body: some View {
         let category = PoiText.category(item.poi.category)
-        let distance = PoiText.distance(item.distanceMeters, approximate: approximate)
-        let spokenDistance = PoiText.spokenDistance(item.distanceMeters, approximate: approximate)
+        let distance = PoiText.straightLine(item.distanceMeters, approximate: approximate, display)
+        let spokenDistance = PoiText.spokenStraightLine(item.distanceMeters, approximate: approximate, display)
 
         return HStack(alignment: .center, spacing: Spacing.s) {
             IconView(name: Icon.category(item.poi.category))
@@ -233,7 +277,7 @@ struct NearbyLocationLine: Identifiable {
         return Int(min(accuracy, 1.0e6).rounded())
     }
 
-    private static func ageText(_ seconds: Int) -> String {
+    static func ageText(_ seconds: Int) -> String {
         let minutes = max(0, seconds) / 60
         if minutes < 1 {
             return L10n.nearbyAgeNow
@@ -244,7 +288,7 @@ struct NearbyLocationLine: Identifiable {
         return L10n.nearbyAgeHours(minutes / 60)
     }
 
-    private static func spokenAge(_ seconds: Int) -> String {
+    static func spokenAge(_ seconds: Int) -> String {
         let minutes = max(0, seconds) / 60
         if minutes < 1 {
             return L10n.nearbySpokenAgeNow

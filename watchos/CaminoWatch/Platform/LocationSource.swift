@@ -136,11 +136,17 @@ final class LocationSource: NSObject, CLLocationManagerDelegate {
 
     // MARK: - Privado
 
+    /// Incluye la altitud GPS (V1.1 §E): `verticalAccuracy` negativa = altitud no válida → `nil`.
+    /// El núcleo descarta además las altitudes con precisión vertical > 15 m.
     private static func makeFix(_ location: CLLocation) -> LocationFix {
+        let verticalAccuracy = location.verticalAccuracy
+        let hasAltitude = verticalAccuracy >= 0 && location.altitude.isFinite
         return LocationFix(
             point: GeoPoint(lat: location.coordinate.latitude, lon: location.coordinate.longitude),
             accuracyMeters: location.horizontalAccuracy,
-            timestamp: location.timestamp
+            timestamp: location.timestamp,
+            altitudeMeters: hasAltitude ? location.altitude : nil,
+            verticalAccuracyMeters: hasAltitude ? verticalAccuracy : nil
         )
     }
 

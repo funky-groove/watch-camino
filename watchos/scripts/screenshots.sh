@@ -9,7 +9,12 @@
 # 3. Por cada tema (negro, perla) y pantalla lanza la app con argumentos de escenario
 #    (DemoScenario: datos DEMO en memoria, nunca el almacenamiento real) y captura.
 # 4. En el pequeño, además, texto grande (accessibility-large) en inicio activo y estadísticas,
-#    y una pasada en inglés (-AppleLanguages "(en)" -AppleLocale en_US) de inicio activo y SOS.
+#    y una pasada en inglés (-AppleLanguages "(en)" -AppleLocale en_US) de trayecto, SOS y ajustes.
+#    V1.1: trayecto en pausa, perfil ampliado, Lugares, ayuda de la esfera, aviso de primer uso
+#    (forzado con -demo.route face-prompt), resumen y trayecto en unidades imperiales/velocidad.
+#    Las complicaciones (CaminoWidgets) NO se pueden capturar con simctl: se verifican con los
+#    #Preview de CaminoWidgets.swift en Xcode (activo, pausado en millas, datos antiguos, sin
+#    trayecto, sin datos).
 #    La pantalla SOS usa SIEMPRE el marcador simulado (MockEmergencyDialer, por -demo.scenario):
 #    no se abre ninguna llamada; además las capturas no pulsan nada.
 # 5. Escribe out/index.md, out/contact_sheet.png (si hay Pillow) y vuelca en el log las
@@ -42,18 +47,25 @@ command -v python3 >/dev/null || die "python3 no disponible"
 SCREENS=(
   "inicio-activo|active|"
   "inicio-activo-final|active||-demo.scrollToEnd YES"
+  "inicio-pausado|paused|"
+  "inicio-imperial-velocidad|active||-settings.units imperial -settings.paceMode speed"
+  "perfil|active|profile"
   "sos|active|sos"
   "sos-sin-trayecto|idle|sos"
   "inicio-idle|idle|"
   "estadisticas|active|stats"
   "detalle-distancia|active|stat-distance"
   "cerca-agua|nearby|nearby-water"
+  "lugares|nearby|places"
   "ficha-poi|alert|poi-p01"
   "ajustes|idle|settings"
+  "ajustes-esfera|idle|settings-face"
+  "aviso-esfera|idle|face-prompt"
   "sync|finished|sync"
   "aviso|alert|"
   "inicio-finalizado|finished|"
   "elegir-etapa|finished|picker"
+  "resumen|finished|summary"
 )
 THEMES=(negro perla)
 LARGE_TEXT_SCREENS=(
@@ -64,14 +76,16 @@ LARGE_TEXT_SCREENS=(
 # Pasada en inglés (sólo en el reloj pequeño).
 ENGLISH_SCREENS=(
   "inicio-activo|active|"
+  "inicio-pausado|paused|"
   "sos|active|sos"
+  "ajustes|idle|settings"
 )
 ENGLISH_ARGS='-AppleLanguages (en) -AppleLocale en_US'
 
 # Posición simulada coherente con cada escenario (por si la app pide una lectura real).
 scenario_location() {
   case "$1" in
-    active)  echo "42.77109,-7.45139" ;;
+    active|paused)  echo "42.77109,-7.45139" ;;
     alert)   echo "42.77085,-7.45231" ;;
     *)       echo "42.9132,-8.0118" ;;
   esac

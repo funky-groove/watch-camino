@@ -385,3 +385,114 @@ enum SyncText {
         }
     }
 }
+
+// MARK: - Cifras compactas (V1.1)
+
+/// Cifra secundaria en una sola fila: etiqueta a la izquierda y valor a la derecha
+/// (con texto grande pasa a dos líneas). `value == nil` → `emptyText`, nunca un cero ficticio.
+struct CompactMetricRow: View {
+    var symbol: String? = nil
+    let label: String
+    let value: String?
+    /// Lectura para VoiceOver del valor.
+    let spokenValue: String?
+    var emptyText: String = L10n.noData
+
+    @Environment(\.palette) private var palette
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline, spacing: Spacing.xs) {
+                labelView
+                Spacer(minLength: Spacing.xs)
+                valueView
+            }
+            VStack(alignment: .leading, spacing: 0) {
+                labelView
+                valueView
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(label)
+        .accessibilityValue(spokenValue ?? value ?? emptyText)
+    }
+
+    private var labelView: some View {
+        HStack(alignment: .firstTextBaseline, spacing: Spacing.xxs) {
+            if let symbol = symbol {
+                IconView(name: symbol, color: palette.textSecondary)
+            }
+            Text(label)
+                .typeStyle(.detail)
+                .foregroundStyle(palette.textSecondary)
+                .fixedSize()
+        }
+    }
+
+    @ViewBuilder
+    private var valueView: some View {
+        if let value = value {
+            Text(value)
+                .font(TypeStyle.body.font.weight(.semibold).monospacedDigit())
+                .foregroundStyle(palette.textPrimary)
+                .fixedSize()
+        } else {
+            Text(emptyText)
+                .typeStyle(.detail)
+                .foregroundStyle(palette.textSecondary)
+                .fixedSize()
+        }
+    }
+}
+
+/// Fila seleccionable (ajustes y filtros): icono, título y marca «activo» con texto.
+struct SelectionRow: View {
+    let symbol: String
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    @Environment(\.palette) private var palette
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: Spacing.s) {
+                IconView(name: symbol)
+                Text(title)
+                    .typeStyle(.body)
+                    .foregroundStyle(palette.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+                if isSelected {
+                    HStack(spacing: Spacing.xxs) {
+                        IconView(name: Icon.check)
+                        Text(L10n.settingsThemeSelected)
+                            .typeStyle(.detail)
+                            .foregroundStyle(palette.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, minHeight: Target.minimumHeight, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(RowButtonStyle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : [.isButton])
+    }
+}
+
+/// Estado del trayecto con símbolo + texto (el color nunca va solo): «En marcha» / «Pausado».
+struct TripStateLine: View {
+    let isPaused: Bool
+
+    var body: some View {
+        StatusLine(
+            symbol: isPaused ? Icon.paused : Icon.running,
+            text: isPaused ? L10n.tripPaused : L10n.tripRunning,
+            tone: isPaused ? .warning : .positive
+        )
+    }
+}

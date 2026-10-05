@@ -1,7 +1,7 @@
 /* Textos de la extensión de widgets (CaminoWidgets). Base: español. */
 "widget.app" = "Camino Seguro";
-"widget.name" = "Mi etapa";
-"widget.description" = "Distancia y tiempo de la etapa en curso.";
+"widget.name" = "Trayecto";
+"widget.description" = "Distancia y estado del trayecto en curso. Tocar abre la app.";
 "widget.demo" = "DEMO";
 "widget.demo.a11y" = "Datos de demostración.";
 "widget.unit.km" = "km";
@@ -14,3 +14,9 @@
 "widget.elapsed.a11y" = "Tiempo";
 "widget.of" = "de %@";
 "widget.progress.a11y" = "Etapa: %@ de %@";
+"widget.start" = "Iniciar trayecto";
+"widget.start.short" = "Iniciar";
+"widget.running" = "en marcha";
+"widget.paused" = "pausado";
+"widget.ago" = "hace %ld min";
+"widget.stale.a11y" = "Datos de hace %ld minutos.";

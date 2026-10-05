@@ -6,13 +6,36 @@ enum Route: Hashable {
     case pickStage
     case stats
     case statDetail(StatMetric)
+    /// Destino «Lugares» (V1.1 §A, §J). `waterOnly` abre con el filtro de agua.
     case nearby(waterOnly: Bool)
     case poi(id: String)
     case settings
     case sync
+    /// Perfil de altitud registrado, ampliado (V1.1 §B-C).
+    case profile
+    /// Instrucciones para añadir la complicación a la esfera (V1.1 §I).
+    case watchFaceHelp
     /// Pantalla de emergencia (botón «SOS» de la cabecera). Se apila sobre la pantalla
     /// principal: al volver, esa pantalla sigue viva con su posición de desplazamiento.
     case sos
+}
+
+/// Filtro mínimo de «Lugares» (V1.1 §J).
+enum PlaceFilter: String, Hashable, CaseIterable {
+    case all
+    case water
+    case shelter
+
+    var categories: Set<PoiCategory> {
+        switch self {
+        case .all:
+            return Set(PoiCategory.allCases)
+        case .water:
+            return [.water]
+        case .shelter:
+            return [.shelter]
+        }
+    }
 }
 
 /// Métricas con ficha de detalle.

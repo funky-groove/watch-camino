@@ -5,10 +5,13 @@ import CaminoDesign
 /// Estadísticas: "esta etapa" (la que está en curso o, si no hay, la última terminada,
 /// diciendo cuál) y "acumulado" (suma de las etapas terminadas).
 ///
-/// Sólo métricas con fuente real: distancia (GPS), tiempo (reloj) y pasos (sensor de
-/// movimiento). Ni ritmo, ni calorías, ni altitud.
+/// Sólo métricas con fuente real: distancia (GPS), duración total y tiempo en movimiento
+/// (reloj + GPS), pasos (sensor de movimiento) y subida (altitud GPS). Ni calorías ni
+/// estimaciones. Unidades e idioma según las preferencias (V1.1 §G).
 struct StatsView: View {
     @EnvironmentObject private var model: AppModel
+    /// Cifras con las unidades y el idioma del usuario (V1.1 §G).
+    private var display: UnitDisplay { model.display }
     @Environment(\.palette) private var palette
 
     var body: some View {
@@ -35,8 +38,8 @@ struct StatsView: View {
             StatLinkRow(metric: .distance) {
                 MetricView(
                     label: L10n.statsMetricDistance,
-                    value: Formatters.distance(meters: session.distanceMeters),
-                    spokenValue: Spoken.distance(meters: session.distanceMeters)
+                    value: display.distance(session.distanceMeters),
+                    spokenValue: display.spokenDistance(session.distanceMeters)
                 )
             }
             StatLinkRow(metric: .time) {
@@ -49,11 +52,16 @@ struct StatsView: View {
                     )
                 }
             }
+            MetricView(
+                label: L10n.tripMovingTime,
+                value: display.duration(interval: session.movingSeconds),
+                spokenValue: Spoken.duration(interval: session.movingSeconds)
+            )
             StatLinkRow(metric: .steps) {
                 MetricView(
                     label: L10n.statsMetricSteps,
-                    value: model.stepsUnavailable ? nil : Formatters.steps(session.steps),
-                    spokenValue: model.stepsUnavailable ? nil : Spoken.steps(session.steps),
+                    value: model.stepsUnavailable ? nil : display.steps(session.steps),
+                    spokenValue: model.stepsUnavailable ? nil : display.spokenSteps(session.steps),
                     emptyText: L10n.statsNoSteps
                 )
             }
@@ -62,8 +70,8 @@ struct StatsView: View {
             StatLinkRow(metric: .distance) {
                 MetricView(
                     label: L10n.statsMetricDistance,
-                    value: Formatters.distance(meters: summary.distanceMeters),
-                    spokenValue: Spoken.distance(meters: summary.distanceMeters)
+                    value: display.distance(summary.distanceMeters),
+                    spokenValue: display.spokenDistance(summary.distanceMeters)
                 )
             }
             StatLinkRow(metric: .time) {
@@ -73,11 +81,16 @@ struct StatsView: View {
                     spokenValue: Spoken.duration(seconds: summary.activeSeconds)
                 )
             }
+            MetricView(
+                label: L10n.tripMovingTime,
+                value: display.duration(seconds: summary.movingSeconds),
+                spokenValue: Spoken.duration(seconds: summary.movingSeconds)
+            )
             StatLinkRow(metric: .steps) {
                 MetricView(
                     label: L10n.statsMetricSteps,
-                    value: Formatters.steps(summary.steps),
-                    spokenValue: Spoken.steps(summary.steps)
+                    value: display.steps(summary.steps),
+                    spokenValue: display.spokenSteps(summary.steps)
                 )
             }
         } else {
@@ -101,8 +114,8 @@ struct StatsView: View {
             StatLinkRow(metric: .distance) {
                 MetricView(
                     label: L10n.statsMetricDistance,
-                    value: Formatters.distance(meters: totals.distanceMeters),
-                    spokenValue: Spoken.distance(meters: totals.distanceMeters)
+                    value: display.distance(totals.distanceMeters),
+                    spokenValue: display.spokenDistance(totals.distanceMeters)
                 )
             }
             StatLinkRow(metric: .time) {
@@ -115,10 +128,15 @@ struct StatsView: View {
             StatLinkRow(metric: .steps) {
                 MetricView(
                     label: L10n.statsMetricSteps,
-                    value: Formatters.steps(totals.steps),
-                    spokenValue: Spoken.steps(totals.steps)
+                    value: display.steps(totals.steps),
+                    spokenValue: display.spokenSteps(totals.steps)
                 )
             }
+            MetricView(
+                label: L10n.altitudeAscent,
+                value: display.elevation(totals.ascentMeters),
+                spokenValue: display.spokenElevation(totals.ascentMeters)
+            )
         }
     }
 

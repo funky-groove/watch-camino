@@ -125,7 +125,7 @@ extension L10n {
         tr("statdetail.distance.source", "Medida con GPS; se descartan posiciones con precisión peor de 50 m.")
     }
     static var statDetailTimeSource: String {
-        tr("statdetail.time.source", "Desde que iniciaste el trayecto; no se pausa.")
+        tr("statdetail.time.source", "Duración total desde que iniciaste el trayecto, pausas incluidas. El tiempo en movimiento sólo cuenta los tramos caminando.")
     }
     static var statDetailStepsSource: String {
         tr("statdetail.steps.source", "Sensor de movimiento del reloj.")

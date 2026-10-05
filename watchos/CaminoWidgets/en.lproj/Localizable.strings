@@ -1,7 +1,7 @@
 /* Widget extension texts (CaminoWidgets). English. Same keys as es.lproj (checked by watchos/tools/gen_strings.py --check). */
 "widget.app" = "Camino Seguro";
-"widget.name" = "My walk";
-"widget.description" = "Distance and time of the walk in progress.";
+"widget.name" = "Walk";
+"widget.description" = "Distance and status of the walk in progress. Tap to open the app.";
 "widget.demo" = "DEMO";
 "widget.demo.a11y" = "Demo data.";
 "widget.unit.km" = "km";
@@ -14,3 +14,9 @@
 "widget.elapsed.a11y" = "Time";
 "widget.of" = "of %@";
 "widget.progress.a11y" = "Walk: %@ of %@";
+"widget.start" = "Start walk";
+"widget.start.short" = "Start";
+"widget.running" = "active";
+"widget.paused" = "paused";
+"widget.ago" = "%ld min ago";
+"widget.stale.a11y" = "Data from %ld minutes ago.";

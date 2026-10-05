@@ -2,14 +2,18 @@ import SwiftUI
 import CaminoCore
 import CaminoDesign
 
-/// Pantalla principal, sin trayecto en curso o con él.
+/// Pantalla Trayecto (principal), sin trayecto en curso o con él.
 ///
 /// - Cabecera (barra nativa, fija al desplazar y respetando la hora): ajustes a la izquierda
 ///   y «SOS» a la derecha. El SOS se alcanza sin recorrer las estadísticas.
-/// - Con trayecto en curso, lo primero que se ve responde a: ¿cuánto llevo? (cifra héroe),
-///   ¿cuánto tiempo? y ¿cómo va el trayecto? Lo demás queda debajo, con la Digital Crown,
-///   y «Finalizar trayecto» va al final, separado por una línea. Con la pantalla atenuada
-///   (Always On) sólo se muestran esas tres respuestas.
+/// - Con trayecto en curso, orden de V1.1 §B:
+///   A. estadísticas principales (estado «En marcha»/«Pausado», distancia destacada, tiempo
+///      en movimiento y ritmo o velocidad), visibles sin desplazarse en 40 mm;
+///   B. altitud actual, subida y bajada (fuente GPS; ausente o antigua se dice);
+///   C. perfil registrado compacto (tocar → ampliado);
+///   D. hasta 3 lugares útiles («en línea recta») y «Ver todos» → Lugares;
+///   E. «Pausar»/«Reanudar» y, al final y separado, «Finalizar trayecto».
+///   Con la pantalla atenuada (Always On) sólo se muestra A.
 /// - Abrir el SOS apila una pantalla sobre ésta: al volver, esta vista sigue viva (misma
 ///   identidad en la raíz del `NavigationStack`) con su posición de desplazamiento.
 struct HomeView: View {
@@ -64,6 +68,11 @@ struct HomeView: View {
                 .accessibilityLabel(L10n.sosButton)
                 .accessibilityHint(L10n.sosButtonHint)
             }
+        }
+        .onAppear {
+            // Cuenta como "pantalla principal mostrada" y, en la primera aparición del
+            // arranque, decide si se ofrece el aviso «Accede desde tu esfera» (§I).
+            model.homeAppeared(pathIsEmpty: path.isEmpty)
         }
         .onChange(of: path.isEmpty) { _, isEmpty in
             // De vuelta en esta pantalla (p. ej. al salir de elegir etapa sin iniciar).
@@ -122,84 +131,101 @@ struct HomeView: View {
 
     @ViewBuilder
     private func activeContent(_ session: StageSession) -> some View {
-        // Orden visual = orden de lectura de VoiceOver: la cifra héroe primero.
+        let display = model.display
+        // A. Orden visual = orden de lectura de VoiceOver.
+        TripStateLine(isPaused: session.isPaused)
+
         NavigationLink(value: Route.statDetail(.distance)) {
-            distanceMetric(session)
+            distanceMetric(session, display)
         }
         .buttonStyle(.plain)
         .accessibilityHint(L10n.myStageOpenDetailHint)
 
-        NavigationLink(value: Route.statDetail(.time)) {
-            timeMetric(session)
-        }
-        .buttonStyle(.plain)
-        .accessibilityHint(L10n.myStageOpenDetailHint)
+        // Filas compactas (no pulsables) para que A quepa sin desplazarse en 40 mm;
+        // el detalle del tiempo está en Estadísticas.
+        CompactMetricRow(
+            label: L10n.tripMovingTimeShort,
+            value: display.duration(interval: session.movingSeconds),
+            spokenValue: Spoken.duration(interval: session.movingSeconds)
+        )
 
-        stageProgress(session)
+        CompactMetricRow(
+            label: display.paceOrSpeedLabel,
+            value: display.paceOrSpeed(distanceMeters: session.distanceMeters, movingSeconds: session.movingSeconds),
+            spokenValue: display.spokenPaceOrSpeed(
+                distanceMeters: session.distanceMeters,
+                movingSeconds: session.movingSeconds
+            )
+        )
 
         if !isLuminanceReduced {
-            if model.isDemo {
-                DemoBadge()
+            // Grupos: menos de 10 vistas por bloque del ViewBuilder.
+            Group {
+                if session.isPaused {
+                    Text(L10n.tripPausedNote)
+                        .typeStyle(.detail)
+                        .foregroundStyle(palette.textSecondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if model.isDemo {
+                    DemoBadge()
+                }
+                staleLocationLine
+                stageProgress(session, display)
+                NavigationLink(value: Route.statDetail(.steps)) {
+                    stepsMetric(session, display)
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint(L10n.myStageOpenDetailHint)
+                if let alert = model.lastAlert {
+                    alertCard(alert, display)
+                }
             }
-            NavigationLink(value: Route.statDetail(.steps)) {
-                stepsMetric(session)
-            }
-            .buttonStyle(.plain)
-            .accessibilityHint(L10n.myStageOpenDetailHint)
 
-            staleLocationLine
+            Group {
+                // B. Altitud y desnivel.
+                altitudeSection(session, display)
+                // C. Perfil registrado.
+                profileSection(session, display)
+                // D. Lugares útiles.
+                placesSection(display)
+            }
 
-            // Agua: a una pulsación, cerca de arriba.
-            waterRow
-            // §10.3: debajo de las cifras principales, para no desplazarlas.
-            if let next = model.nextPoi {
-                nextPoiRow(next)
+            Group {
+                statsRow
+                syncRow
+                warnings
+                // E. Controles.
+                controlsSection(session)
             }
-            if let alert = model.lastAlert {
-                alertCard(alert)
-            }
-            statsRow
-            syncRow
-            warnings
-            finishSection
         }
     }
 
     /// ¿Cuánto llevo recorrido? Sin ningún fix en la sesión: "esperando GPS", nunca "0 m".
-    private func distanceMetric(_ session: StageSession) -> some View {
+    private func distanceMetric(_ session: StageSession, _ display: UnitDisplay) -> some View {
+        // En pausa sin ningún tramo medido no se espera al GPS (no suma): "sin datos".
         let waiting = session.lastFix == nil && session.distanceMeters <= 0
         return MetricView(
             label: L10n.myStageWalked,
-            value: waiting ? nil : Formatters.distance(meters: session.distanceMeters),
-            spokenValue: waiting ? nil : Spoken.distance(meters: session.distanceMeters),
+            value: waiting ? nil : display.distance(session.distanceMeters),
+            spokenValue: waiting ? nil : display.spokenDistance(session.distanceMeters),
             size: .hero,
-            emptyText: L10n.myStageWaitingGps
+            emptyText: session.isPaused ? L10n.noData : L10n.myStageWaitingGps
         )
         .frame(minHeight: Target.minimumHeight)
         .contentShape(Rectangle())
     }
 
-    /// ¿Cuánto tiempo llevo? El formato es en minutos: basta refrescar cada minuto.
-    private func timeMetric(_ session: StageSession) -> some View {
-        TimelineView(.periodic(from: session.startedAt, by: 60)) { context in
-            let seconds = model.elapsedSeconds(at: context.date)
-            MetricView(
-                label: L10n.myStageTime,
-                value: Formatters.duration(seconds: seconds),
-                spokenValue: Spoken.duration(seconds: seconds)
-            )
-            .frame(minHeight: Target.minimumHeight)
-            .contentShape(Rectangle())
-        }
-    }
-
     /// Pasos del sensor de movimiento; sin acceso: "sin datos de pasos", no un cero ficticio.
-    private func stepsMetric(_ session: StageSession) -> some View {
+    /// Los pasos no se pausan (el sensor no se puede pausar).
+    private func stepsMetric(_ session: StageSession, _ display: UnitDisplay) -> some View {
         let unavailable = model.stepsUnavailable
-        return MetricView(
+        return CompactMetricRow(
+            symbol: Icon.steps,
             label: L10n.statsMetricSteps,
-            value: unavailable ? nil : Formatters.steps(session.steps),
-            spokenValue: unavailable ? nil : Spoken.steps(session.steps),
+            value: unavailable ? nil : display.steps(session.steps),
+            spokenValue: unavailable ? nil : display.spokenSteps(session.steps),
             emptyText: L10n.statsNoSteps
         )
         .frame(minHeight: Target.minimumHeight)
@@ -225,13 +251,13 @@ struct HomeView: View {
         }
     }
 
-    /// ¿Cómo va el trayecto? Nombre de la etapa, progreso recorrido/plan y "quedan X km" en
-    /// texto (el color de la línea no es la única señal).
-    private func stageProgress(_ session: StageSession) -> some View {
+    /// Nombre de la etapa, progreso recorrido/plan y "quedan X km" en texto
+    /// (el color de la línea no es la única señal).
+    private func stageProgress(_ session: StageSession, _ display: UnitDisplay) -> some View {
         let name = model.stageName(id: session.stageId)
         let plan = model.stage(id: session.stageId)?.distanceMeters ?? 0
         let remaining = model.remainingMeters
-        let spokenRemaining = plan > 0 ? L10n.myStageRemaining(Spoken.distance(meters: remaining)) : ""
+        let spokenRemaining = plan > 0 ? L10n.myStageRemaining(display.spokenDistance(remaining)) : ""
         return VStack(alignment: .leading, spacing: Spacing.xs) {
             Text(name)
                 .typeStyle(.detail)
@@ -239,7 +265,7 @@ struct HomeView: View {
                 .fixedSize(horizontal: false, vertical: true)
             if plan > 0 {
                 ProgressLine(fraction: session.distanceMeters / Double(plan))
-                Text(L10n.myStageRemaining(Formatters.distance(meters: remaining)))
+                Text(L10n.myStageRemaining(display.distance(remaining)))
                     .typeStyle(.detail)
                     .foregroundStyle(palette.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -251,9 +277,9 @@ struct HomeView: View {
         .accessibilityValue(spokenRemaining)
     }
 
-    private func alertCard(_ alert: PoiAlert) -> some View {
+    private func alertCard(_ alert: PoiAlert, _ display: UnitDisplay) -> some View {
         let detail = PoiText.category(alert.poi.category) + " · "
-            + L10n.myStageAtAlert(Formatters.distance(meters: alert.distanceMeters))
+            + L10n.myStageAtAlert(display.distance(alert.distanceMeters))
         return VStack(alignment: .leading, spacing: Spacing.xs) {
             SectionLabel(text: L10n.myStageLastAlert)
             NavigationLink(value: Route.poi(id: alert.poi.id)) {
@@ -261,15 +287,104 @@ struct HomeView: View {
             }
             .buttonStyle(RowButtonStyle())
             .accessibilityLabel(L10n.myStageLastAlert + ": " + PoiText.category(alert.poi.category)
-                + ", " + Spoken.poiAlert(alert))
+                + ", " + Spoken.poiAlert(alert, display))
         }
     }
 
-    /// Al final del contenido, separado por una línea y espacio. Neutro (no rojo) y a todo
-    /// el ancho: no se confunde con el «SOS» compacto y rojo de la cabecera.
-    private var finishSection: some View {
+    // MARK: B. Altitud y desnivel
+
+    private func altitudeSection(_ session: StageSession, _ display: UnitDisplay) -> some View {
+        VStack(alignment: .leading, spacing: Spacing.xs) {
+            SectionLabel(text: L10n.altitudeSection)
+                .padding(.top, Spacing.s)
+            // "Antigua" depende del tiempo: se recalcula cada 30 s (sin animación).
+            TimelineView(.periodic(from: Date(), by: 30)) { context in
+                AltitudeBlock(session: session, display: display, now: context.date)
+            }
+        }
+    }
+
+    // MARK: C. Perfil
+
+    @ViewBuilder
+    private func profileSection(_ session: StageSession, _ display: UnitDisplay) -> some View {
+        VStack(alignment: .leading, spacing: Spacing.xs) {
+            SectionLabel(text: L10n.profileSection)
+                .padding(.top, Spacing.s)
+            if session.profile.count >= 2 {
+                NavigationLink(value: Route.profile) {
+                    ProfileBlock(samples: session.profile, display: display)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityElement(children: .combine)
+                .accessibilityHint(L10n.profileHint)
+            } else {
+                ProfileBlock(samples: session.profile, display: display)
+            }
+        }
+    }
+
+    // MARK: D. Lugares útiles
+
+    private func placesSection(_ display: UnitDisplay) -> some View {
+        let places = model.usefulPlaces
+        let approximate = model.locationQuality(at: Date()).isApproximate
+        return VStack(alignment: .leading, spacing: Spacing.s) {
+            SectionLabel(text: L10n.placesSection)
+                .padding(.top, Spacing.s)
+            if model.lastAnyFix == nil {
+                StatusLine(symbol: Icon.locationOff, text: L10n.myStageNoLocation)
+            } else if places.isEmpty {
+                StatusLine(symbol: Icon.places, text: L10n.nearbyEmptyAllStage)
+            } else {
+                ForEach(places, id: \.poi.id) { item in
+                    placeRow(item, approximate: approximate, display: display)
+                }
+            }
+            NavigationLink(value: Route.nearby(waterOnly: false)) {
+                RowLabel(symbol: Icon.places, title: L10n.placesSeeAll)
+            }
+            .buttonStyle(RowButtonStyle())
+        }
+    }
+
+    private func placeRow(_ item: PoiAlert, approximate: Bool, display: UnitDisplay) -> some View {
+        let category = PoiText.category(item.poi.category)
+        let detail = category + " · " + PoiText.straightLine(item.distanceMeters, approximate: approximate, display)
+        let spoken = item.poi.name + ", " + category + ", "
+            + PoiText.spokenStraightLine(item.distanceMeters, approximate: approximate, display)
+        return NavigationLink(value: Route.poi(id: item.poi.id)) {
+            RowLabel(symbol: Icon.category(item.poi.category), title: item.poi.name, detail: detail)
+        }
+        .buttonStyle(RowButtonStyle())
+        .accessibilityLabel(spoken)
+    }
+
+    // MARK: E. Controles
+
+    /// «Pausar»/«Reanudar» y, al final, separado por una línea y espacio, «Finalizar trayecto».
+    /// Neutros (no rojos) y a todo el ancho: no se confunden con el «SOS» compacto y rojo.
+    private func controlsSection(_ session: StageSession) -> some View {
         VStack(alignment: .leading, spacing: Spacing.m) {
+            Button {
+                if session.isPaused {
+                    model.resumeTrip()
+                } else {
+                    model.pauseTrip()
+                }
+            } label: {
+                HStack(spacing: Spacing.xs) {
+                    IconView(name: session.isPaused ? Icon.resume : Icon.pause)
+                    Text(session.isPaused ? L10n.tripResume : L10n.tripPause)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .buttonStyle(SecondaryButtonStyle())
+            .accessibilityHint(session.isPaused ? L10n.tripResumeHint : L10n.tripPauseHint)
+
             Hairline()
+                .padding(.top, Spacing.s)
             Button {
                 confirmingFinish = true
             } label: {
@@ -306,6 +421,7 @@ struct HomeView: View {
                 DemoBadge()
             }
             waterRow
+            placesRow
             lastFinishedLine
             permissionLines
             statsRow
@@ -317,15 +433,16 @@ struct HomeView: View {
     @ViewBuilder
     private var lastFinishedLine: some View {
         if let last = model.latestSummary {
+            let display = model.display
             Text(L10n.myStageLastFinished(
-                model.stageName(id: last.stageId) + " · " + Formatters.distance(meters: last.distanceMeters)
+                model.stageName(id: last.stageId) + " · " + display.distance(last.distanceMeters)
             ))
             .typeStyle(.detail)
             .foregroundStyle(palette.textSecondary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityLabel(L10n.myStageLastFinished(
-                model.stageName(id: last.stageId) + ", " + Spoken.distance(meters: last.distanceMeters)
+                model.stageName(id: last.stageId) + ", " + display.spokenDistance(last.distanceMeters)
             ))
         }
     }
@@ -355,6 +472,7 @@ struct HomeView: View {
 
     /// "agua · 340 m" (aproximada si la ubicación lo es); sin ubicación, "agua cercana · sin ubicación".
     private var waterRow: some View {
+        let display = model.display
         let title: String
         let detail: String
         let spoken: String
@@ -364,10 +482,10 @@ struct HomeView: View {
             spoken = title + ", " + detail
         } else if let water = model.nearestWater {
             let approximate = model.locationQuality(at: Date()).isApproximate
-            title = L10n.myStageWaterAt(PoiText.distance(water.distanceMeters, approximate: approximate))
+            title = L10n.myStageWaterAt(PoiText.distance(water.distanceMeters, approximate: approximate, display))
             detail = water.poi.name
             spoken = L10n.myStageWater + ", "
-                + PoiText.spokenDistance(water.distanceMeters, approximate: approximate)
+                + PoiText.spokenStraightLine(water.distanceMeters, approximate: approximate, display)
                 + ", " + water.poi.name
         } else {
             title = L10n.myStageWater
@@ -381,20 +499,12 @@ struct HomeView: View {
         .accessibilityLabel(spoken)
     }
 
-    /// "próximo lugar · 1,2 km" + nombre: el POI no avisado más cercano (sólo con fix).
-    private func nextPoiRow(_ next: PoiAlert) -> some View {
-        let distance = PoiText.distance(next.distanceMeters, approximate: false)
-        let spoken = L10n.myStageNextPoiLabel + ", " + next.poi.name + ", "
-            + PoiText.spokenDistance(next.distanceMeters, approximate: false)
-        return NavigationLink(value: Route.poi(id: next.poi.id)) {
-            RowLabel(
-                symbol: Icon.category(next.poi.category),
-                title: L10n.myStageNextPoi(distance),
-                detail: next.poi.name
-            )
+    /// Destino «Lugares» sin trayecto en curso (V1.1 §A).
+    private var placesRow: some View {
+        NavigationLink(value: Route.nearby(waterOnly: false)) {
+            RowLabel(symbol: Icon.places, title: L10n.placesTitle)
         }
         .buttonStyle(RowButtonStyle())
-        .accessibilityLabel(spoken)
     }
 
     private var statsRow: some View {
@@ -436,6 +546,50 @@ struct HomeView: View {
         if let message = model.errorMessage {
             StatusLine(symbol: Icon.warning, text: message, tone: .critical)
         }
+    }
+}
+
+/// Altitud actual (fuente GPS), subida y bajada (V1.1 §B-B, §E). Sin altitud válida:
+/// "sin datos de altitud"; medida hace > 5 min: "altitud antigua · hace X".
+struct AltitudeBlock: View {
+    let session: StageSession
+    let display: UnitDisplay
+    let now: Date
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.xs) {
+            if let altitude = session.altitude {
+                MetricView(
+                    label: L10n.altitudeCurrent,
+                    value: display.elevation(altitude),
+                    spokenValue: display.spokenElevation(altitude)
+                )
+                if session.isAltitudeStale(at: now), let measuredAt = session.altitudeAt {
+                    let age = max(0, Int(now.timeIntervalSince(measuredAt)))
+                    StatusLine(
+                        symbol: Icon.time,
+                        text: L10n.altitudeStale(NearbyLocationLine.ageText(age)),
+                        tone: .warning
+                    )
+                    .accessibilityLabel(L10n.altitudeStale(NearbyLocationLine.spokenAge(age)))
+                }
+                CompactMetricRow(
+                    symbol: Icon.ascent,
+                    label: L10n.altitudeAscent,
+                    value: display.elevation(session.ascentMeters),
+                    spokenValue: display.spokenElevation(session.ascentMeters)
+                )
+                CompactMetricRow(
+                    symbol: Icon.descent,
+                    label: L10n.altitudeDescent,
+                    value: display.elevation(session.descentMeters),
+                    spokenValue: display.spokenElevation(session.descentMeters)
+                )
+            } else {
+                StatusLine(symbol: Icon.altitude, text: L10n.altitudeNone)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

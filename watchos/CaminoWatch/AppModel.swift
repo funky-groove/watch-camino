@@ -34,9 +34,29 @@ final class AppModel: ObservableObject {
     @Published private(set) var stepsUnavailable: Bool = false
     /// Resumen a mostrar tras finalizar (hoja modal).
     @Published var finishedSummary: SessionSummary?
+    /// Si el resumen mostrado quedó guardado en el reloj (estado real de la escritura).
+    @Published private(set) var finishedSaveState: SaveState = .saved
     @Published var errorMessage: String?
+    /// Aviso de primer uso «Accede desde tu esfera» (hoja). Ver `FaceAccessPrompt`.
+    @Published var showFaceAccessPrompt = false
+    /// «Cómo añadirlo» pulsado en el aviso: al cerrarse la hoja se abre la ayuda.
+    var faceHelpRequested = false
+
+    /// Resultado de guardar el trayecto finalizado.
+    enum SaveState: Equatable {
+        /// Escrito en disco sin errores.
+        case saved
+        /// Falló la escritura: sólo está en memoria.
+        case failed
+        /// Sin almacenamiento persistente (escenario DEMO o disco no disponible).
+        case memoryOnly
+    }
 
     let isDemo: Bool
+    /// Unidades y ritmo/velocidad (V1.1 §G). Sus cambios redibujan todo lo que observa el modelo.
+    let preferences: Preferences
+    /// La sesión se guarda en disco (no sólo en memoria).
+    let persistentStorage: Bool
 
     private let controller: CaminoController
     private let credentials: any CredentialStore
@@ -45,6 +65,11 @@ final class AppModel: ObservableObject {
     private let notifier: Notifier
     /// Llamada de emergencia (sistema, o simulada en escenarios DEMO).
     private let dialer: any EmergencyDialer
+    private let faceAccess: FaceAccessPrompt
+    /// El aviso de la esfera sólo se evalúa en la primera aparición de la pantalla principal.
+    private var faceAccessEvaluated = false
+    /// Alguna escritura en disco falló desde la última comprobación.
+    private var storageWriteFailed = false
 
     init() {
         let dependencies = AppEnvironment.make()
@@ -52,6 +77,19 @@ final class AppModel: ObservableObject {
         self.credentials = dependencies.credentials
         self.isDemo = dependencies.controller.isDemo
         self.dialer = dependencies.dialer
+        self.persistentStorage = dependencies.persistentStorage
+        self.preferences = Preferences()
+        #if DEBUG
+        // Escenarios DEMO: el estado del aviso no se guarda (y nunca se muestra solo).
+        let promptDefaults: UserDefaults? = DemoScenario.isRequested ? nil : UserDefaults.standard
+        #else
+        let promptDefaults: UserDefaults? = UserDefaults.standard
+        #endif
+        // Si este arranque restaura un trayecto, el aviso se aplaza a otro arranque (§I).
+        self.faceAccess = FaceAccessPrompt(
+            defaults: promptDefaults,
+            restoredTripThisLaunch: dependencies.controller.activeSession != nil
+        )
         self.location = LocationSource()
         self.steps = StepSource()
         self.notifier = Notifier()
@@ -76,6 +114,15 @@ final class AppModel: ObservableObject {
 
     var activeSession: StageSession? {
         return state.activeSession
+    }
+
+    /// Formato de cifras con las preferencias actuales.
+    var display: UnitDisplay {
+        return preferences.display
+    }
+
+    var isPaused: Bool {
+        return state.isPaused
     }
 
     var stagesForPicker: [Stage] {
@@ -140,9 +187,47 @@ final class AppModel: ObservableObject {
         return controller.nearby(from: fix.point, categories: categories)
     }
 
+    /// Lista de «Lugares» con un filtro mínimo (V1.1 §J).
+    func nearby(filter: PlaceFilter) -> [PoiAlert] {
+        guard let fix = lastAnyFix else {
+            return []
+        }
+        return controller.nearby(from: fix.point, categories: filter.categories)
+    }
+
     /// Agua más cercana (para el acceso directo de "Mi etapa").
     var nearestWater: PoiAlert? {
         return nearby(waterOnly: true).first
+    }
+
+    /// Lugares útiles de la pantalla Trayecto (V1.1 §B-D): como máximo 3. Primero el agua
+    /// más cercana, luego el alojamiento más cercano y el resto por distancia.
+    var usefulPlaces: [PoiAlert] {
+        let all = nearby(filter: .all)
+        var picked: [PoiAlert] = []
+        if let water = all.first(where: { $0.poi.category == .water }) {
+            picked.append(water)
+        }
+        if let shelter = all.first(where: { $0.poi.category == .shelter }) {
+            picked.append(shelter)
+        }
+        for item in all {
+            if picked.count >= 3 {
+                break
+            }
+            if !picked.contains(where: { $0.poi.id == item.poi.id }) {
+                picked.append(item)
+            }
+        }
+        return Array(picked.prefix(3))
+    }
+
+    /// Perfil a mostrar: el del trayecto en curso o, si no hay, el del último terminado.
+    var displayedProfile: [ProfileSample] {
+        if let session = activeSession {
+            return session.profile
+        }
+        return latestSummary?.profile ?? []
     }
 
     // MARK: - SOS
@@ -207,6 +292,21 @@ final class AppModel: ObservableObject {
         return Geo.haversine(fix.point, poi.location)
     }
 
+    /// «Llamar» de la ficha de un lugar (V1.1 §J): sólo con teléfono válido. Entrega el
+    /// `tel:` al sistema, que pide confirmación. NO es el flujo de emergencia (que es `SOSView`)
+    /// y no hay mensajes de éxito: la app no sabe si la llamada se hizo.
+    func callPlace(_ poi: Poi) {
+        guard let url = poi.telURL else {
+            return
+        }
+        if usesSimulatedDialer {
+            // Escenarios DEMO / capturas: nunca se abre una llamada.
+            Log.app.info("Llamada a lugar simulada (demo)")
+            return
+        }
+        PlaceCaller.open(url)
+    }
+
     /// Si el POI ya se avisó en la etapa en curso.
     func wasAlerted(_ poiId: String) -> Bool {
         return activeSession?.alertedPoiIds.contains(poiId) ?? false
@@ -269,13 +369,51 @@ final class AppModel: ObservableObject {
         refresh()
     }
 
+    /// En marcha → Pausado (V1.1 §C). Los sensores siguen (avisos POI activos); el núcleo
+    /// deja de sumar distancia, tiempo en movimiento, altitud y perfil.
+    func pauseTrip() {
+        guard let session = controller.activeSession, !session.isPaused else {
+            return
+        }
+        do {
+            try controller.pause()
+            Log.app.info("Trayecto en pausa")
+        } catch {
+            errorMessage = L10n.errorPause
+            Log.app.error("No se pudo pausar: \(Log.describe(error), privacy: .public)")
+        }
+        refresh()
+    }
+
+    /// Pausado → En marcha.
+    func resumeTrip() {
+        guard let session = controller.activeSession, session.isPaused else {
+            return
+        }
+        do {
+            try controller.resume()
+            Log.app.info("Trayecto reanudado")
+        } catch {
+            errorMessage = L10n.errorResume
+            Log.app.error("No se pudo reanudar: \(Log.describe(error), privacy: .public)")
+        }
+        refresh()
+    }
+
     func finishStage() {
         // Confirmación repetida: no hay nada que finalizar (sin mensaje de error falso).
         guard controller.activeSession != nil else {
             return
         }
+        storageWriteFailed = false
         do {
             let summary = try controller.finish()
+            // «Guardado en el reloj» sólo si la escritura terminó bien (V1.1 resumen).
+            if !persistentStorage {
+                finishedSaveState = .memoryOnly
+            } else {
+                finishedSaveState = storageWriteFailed ? .failed : .saved
+            }
             detachSensors()
             lastAlert = nil
             lastFix = nil
@@ -306,6 +444,66 @@ final class AppModel: ObservableObject {
         }
     }
 
+    // MARK: - Aviso «Accede desde tu esfera» (V1.1 §I)
+
+    /// La pantalla principal ha aparecido. Sólo la primera vez en cada arranque se decide
+    /// si se ofrece el aviso (sin trayecto, sin otra hoja ni navegación pendiente).
+    func homeAppeared(pathIsEmpty: Bool) {
+        faceAccess.markHomeSeen()
+        guard !faceAccessEvaluated else {
+            return
+        }
+        faceAccessEvaluated = true
+        guard pathIsEmpty, finishedSummary == nil, requestedRoutes == nil else {
+            return
+        }
+        if faceAccess.shouldPresent(hasActiveTrip: activeSession != nil) {
+            showFaceAccessPrompt = true
+        }
+    }
+
+    /// «Ahora no»: no se vuelve a ofrecer (la ayuda sigue en Ajustes).
+    func faceAccessNotNow() {
+        faceAccess.dismiss()
+        showFaceAccessPrompt = false
+    }
+
+    /// «Cómo añadirlo»: se guarda y, al cerrarse la hoja, se abre la ayuda.
+    func faceAccessOpenHelp() {
+        faceAccess.helpOpened()
+        faceHelpRequested = true
+        showFaceAccessPrompt = false
+    }
+
+    /// La hoja del aviso se ha cerrado. Devuelve `true` si hay que abrir la ayuda.
+    /// Cerrarla con el botón del sistema cuenta como «Ahora no» (descartar); si la app se
+    /// cierra con la hoja abierta no llega aquí y el estado sigue `notDecided`.
+    func faceAccessSheetClosed() -> Bool {
+        if faceHelpRequested {
+            faceHelpRequested = false
+            return true
+        }
+        if faceAccess.state == .notDecided {
+            faceAccess.dismiss()
+        }
+        return false
+    }
+
+    #if DEBUG
+    /// Sólo escenarios DEMO (`-demo.route face-prompt`): fuerza la hoja.
+    func presentFaceAccessPromptForDemo() {
+        faceAccess.forcePresentation()
+        faceAccessEvaluated = true
+        showFaceAccessPrompt = true
+    }
+
+    /// Sólo escenarios DEMO (`-demo.route summary`): muestra el resumen del último trayecto.
+    func presentLatestSummaryForDemo() {
+        finishedSaveState = persistentStorage ? .saved : .memoryOnly
+        finishedSummary = latestSummary
+    }
+    #endif
+
     // MARK: - Privado
 
     private func wire() {
@@ -314,7 +512,13 @@ final class AppModel: ObservableObject {
         }
         controller.onStorageError = { [weak self] error in
             Log.storage.error("Error de escritura: \(Log.describe(error), privacy: .public)")
+            self?.storageWriteFailed = true
             self?.errorMessage = L10n.errorStorage
+        }
+        preferences.onChange = { [weak self] in
+            Task { @MainActor in
+                self?.preferencesChanged()
+            }
         }
 
         // Los sensores pueden llamar desde otras colas: se salta siempre al MainActor.
@@ -384,13 +588,19 @@ final class AppModel: ObservableObject {
         }
         if let alert = result.alert {
             lastAlert = alert
-            notifier.notifyPoi(poiId: alert.poi.id, text: PoiText.alertText(alert))
+            notifier.notifyPoi(poiId: alert.poi.id, text: PoiText.alertText(alert, display))
             Log.app.info("Aviso POI emitido")
         }
     }
 
     private func handleSteps(_ count: Int) {
         controller.updateSteps(count)
+    }
+
+    /// Cambió una preferencia: redibujar y publicar la instantánea (los widgets la usan).
+    private func preferencesChanged() {
+        objectWillChange.send()
+        refresh()
     }
 
     #if DEBUG

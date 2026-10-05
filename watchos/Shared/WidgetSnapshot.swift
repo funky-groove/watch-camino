@@ -8,7 +8,8 @@ import Foundation
 /// ve en la esfera: nombre de etapa, distancias, hora de inicio y marcas de estado.
 struct WidgetSnapshot: Codable, Equatable {
     /// Versión del formato. Si cambia, el widget ignora ficheros antiguos (degrada a "abre la app").
-    static let currentVersion = 1
+    /// v2 (V1.1): pausa, unidades e idioma.
+    static let currentVersion = 2
 
     var version: Int
     /// Nombre visible de la etapa en curso; `nil` si no hay etapa.
@@ -29,6 +30,12 @@ struct WidgetSnapshot: Codable, Equatable {
     var lastStageName: String?
     var lastStageMeters: Int?
     var lastStageSeconds: Int?
+    /// Trayecto en pausa (V1.1 §C): el widget dice «pausado».
+    var isPaused: Bool
+    /// Preferencias de presentación (V1.1 §G) como texto crudo para no depender del núcleo:
+    /// `UnitSystem.rawValue` ("metric"/"imperial") y `AppLanguage.rawValue` ("es"/"en").
+    var units: String
+    var lang: String
 
     init(
         stageName: String?,
@@ -40,7 +47,10 @@ struct WidgetSnapshot: Codable, Equatable {
         updatedAt: Date,
         lastStageName: String? = nil,
         lastStageMeters: Int? = nil,
-        lastStageSeconds: Int? = nil
+        lastStageSeconds: Int? = nil,
+        isPaused: Bool = false,
+        units: String = "metric",
+        lang: String = "es"
     ) {
         self.version = WidgetSnapshot.currentVersion
         self.stageName = stageName
@@ -53,6 +63,9 @@ struct WidgetSnapshot: Codable, Equatable {
         self.lastStageName = lastStageName
         self.lastStageMeters = lastStageMeters
         self.lastStageSeconds = lastStageSeconds
+        self.isPaused = isPaused
+        self.units = units
+        self.lang = lang
     }
 
     /// Hay etapa en curso.
@@ -80,6 +93,9 @@ struct WidgetSnapshot: Codable, Equatable {
             && lastStageName == other.lastStageName
             && lastStageMeters == other.lastStageMeters
             && lastStageSeconds == other.lastStageSeconds
+            && isPaused == other.isPaused
+            && units == other.units
+            && lang == other.lang
             && abs(walkedMeters - other.walkedMeters) < meterTolerance
     }
 

@@ -8,6 +8,8 @@ struct StatDetailView: View {
     let metric: StatMetric
 
     @EnvironmentObject private var model: AppModel
+    /// Cifras con las unidades y el idioma del usuario (V1.1 §G).
+    private var display: UnitDisplay { model.display }
     @Environment(\.palette) private var palette
 
     var body: some View {
@@ -63,8 +65,8 @@ struct StatDetailView: View {
         case .distance(let meters):
             return MetricView(
                 label: label,
-                value: Formatters.distance(meters: meters),
-                spokenValue: Spoken.distance(meters: meters)
+                value: display.distance(meters),
+                spokenValue: display.spokenDistance(meters)
             )
         case .time(let seconds):
             return MetricView(
@@ -75,8 +77,8 @@ struct StatDetailView: View {
         case .steps(let count):
             return MetricView(
                 label: label,
-                value: Formatters.steps(count),
-                spokenValue: Spoken.steps(count)
+                value: display.steps(count),
+                spokenValue: display.spokenSteps(count)
             )
         case .empty(let text):
             return MetricView(label: label, value: nil, spokenValue: nil, emptyText: text)
@@ -172,11 +174,11 @@ struct StatDetailView: View {
             symbol = Icon.locationOff
             tone = .warning
         case .good(let accuracy, _):
-            text = L10n.statDetailLocationGood(Formatters.distance(meters: accuracy))
+            text = L10n.statDetailLocationGood(display.distance(accuracy))
             symbol = Icon.location
             tone = .positive
         case .imprecise(let accuracy, _):
-            text = L10n.statDetailLocationImprecise(Formatters.distance(meters: accuracy))
+            text = L10n.statDetailLocationImprecise(display.distance(accuracy))
             symbol = Icon.location
             tone = .warning
         case .stale(_, let age):

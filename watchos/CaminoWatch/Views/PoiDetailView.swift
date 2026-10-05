@@ -2,8 +2,10 @@ import SwiftUI
 import CaminoCore
 import CaminoDesign
 
-/// Ficha breve de un lugar: categoría, nombre, distancia actual con su calidad y si ya
-/// se avisó en la etapa. Sin mapa ni navegación paso a paso.
+/// Ficha breve de un lugar (V1.1 §J): categoría, nombre, distancia actual EN LÍNEA RECTA
+/// (no hay rutas) con su calidad, si ya se avisó en la etapa y «Llamar» sólo si el lugar
+/// tiene un teléfono válido. Sin mapa ni navegación paso a paso. Datos locales: no requiere
+/// conexión.
 struct PoiDetailView: View {
     let poiId: String
 
@@ -37,6 +39,7 @@ struct PoiDetailView: View {
         let approximate = quality.isApproximate
         let meters = model.distance(to: poi)
         let category = PoiText.category(poi.category)
+        let display = model.display
 
         HStack(alignment: .firstTextBaseline, spacing: Spacing.xs) {
             IconView(name: Icon.category(poi.category), color: palette.textSecondary)
@@ -57,9 +60,9 @@ struct PoiDetailView: View {
 
         Card {
             MetricView(
-                label: L10n.poiDistance,
-                value: meters.map { PoiText.distance($0, approximate: approximate) },
-                spokenValue: meters.map { PoiText.spokenDistance($0, approximate: approximate) },
+                label: L10n.poiDistanceStraight,
+                value: meters.map { PoiText.distance($0, approximate: approximate, display) },
+                spokenValue: meters.map { PoiText.spokenDistance($0, approximate: approximate, display) },
                 size: .hero,
                 emptyText: L10n.poiNoLocation
             )
@@ -70,6 +73,23 @@ struct PoiDetailView: View {
 
         if model.wasAlerted(poi.id) {
             StatusLine(symbol: Icon.alert, text: L10n.poiAlerted)
+        }
+
+        // «Llamar» sólo con teléfono válido (E.164 o 9 dígitos españoles). Los datos actuales
+        // no traen teléfonos, así que hoy no aparece. No es una llamada de emergencia.
+        if poi.telURL != nil {
+            Button {
+                model.callPlace(poi)
+            } label: {
+                HStack(spacing: Spacing.xs) {
+                    IconView(name: Icon.phone)
+                    Text(L10n.poiCall)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .buttonStyle(SecondaryButtonStyle())
+            .accessibilityLabel(L10n.poiCall + ", " + poi.name)
+            .accessibilityHint(L10n.poiCallHint)
         }
 
         Text(L10n.nearbyDemoNote)

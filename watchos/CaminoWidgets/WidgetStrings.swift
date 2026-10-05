@@ -8,8 +8,8 @@ enum WidgetStrings {
     }
 
     static var appTitle: String { tr("widget.app", "Camino Seguro") }
-    static var displayName: String { tr("widget.name", "Mi etapa") }
-    static var description: String { tr("widget.description", "Distancia y tiempo de la etapa en curso.") }
+    static var displayName: String { tr("widget.name", "Trayecto") }
+    static var description: String { tr("widget.description", "Distancia y estado del trayecto en curso. Tocar abre la app.") }
     static var demo: String { tr("widget.demo", "DEMO") }
     static var demoA11y: String { tr("widget.demo.a11y", "Datos de demostración.") }
     static var unitKm: String { tr("widget.unit.km", "km") }
@@ -20,6 +20,21 @@ enum WidgetStrings {
     static var open: String { tr("widget.open.short", "Abrir") }
     static var noGps: String { tr("widget.nogps", "Sin GPS") }
     static var elapsedA11y: String { tr("widget.elapsed.a11y", "Tiempo") }
+    // V1.1 §H
+    static var start: String { tr("widget.start", "Iniciar trayecto") }
+    static var startShort: String { tr("widget.start.short", "Iniciar") }
+    static var running: String { tr("widget.running", "en marcha") }
+    static var paused: String { tr("widget.paused", "pausado") }
+
+    /// "hace 20 min": datos antiguos, sin prometer frescura.
+    static func ago(_ minutes: Int) -> String {
+        return String(format: tr("widget.ago", "hace %ld min"), minutes)
+    }
+
+    /// "Datos de hace 20 minutos."
+    static func staleA11y(_ minutes: Int) -> String {
+        return String(format: tr("widget.stale.a11y", "Datos de hace %ld minutos."), minutes)
+    }
 
     /// "de 22 km"
     static func ofPlanned(_ planned: String) -> String {

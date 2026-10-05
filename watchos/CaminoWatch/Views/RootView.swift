@@ -17,6 +17,14 @@ struct RootView: View {
         NavigationStack(path: $path) {
             HomeView(path: $path)
                 .themed(themeStore.theme)
+                // Aviso de primer uso «Accede desde tu esfera» (§I). Se cuelga de la pantalla
+                // principal (no del NavigationStack, que ya presenta el resumen).
+                .sheet(isPresented: $model.showFaceAccessPrompt, onDismiss: { faceAccessSheetClosed() }) {
+                    FaceAccessPromptView()
+                        .environmentObject(model)
+                        .environmentObject(themeStore)
+                        .themed(themeStore.theme)
+                }
                 .navigationDestination(for: Route.self) { route in
                     destination(for: route)
                         .themed(themeStore.theme)
@@ -42,6 +50,13 @@ struct RootView: View {
         .onChange(of: model.state.isActive) { _, _ in
             // Al empezar o terminar una etapa se vuelve a la raíz.
             path = []
+        }
+    }
+
+    /// Al cerrarse el aviso: si se pidió «Cómo añadirlo», se abre la ayuda.
+    private func faceAccessSheetClosed() {
+        if model.faceAccessSheetClosed() {
+            path = [.watchFaceHelp]
         }
     }
 
@@ -73,6 +88,10 @@ struct RootView: View {
             SyncView()
         case .sos:
             SOSView()
+        case .profile:
+            ProfileDetailView()
+        case .watchFaceHelp:
+            WatchFaceHelpView()
         }
     }
 }

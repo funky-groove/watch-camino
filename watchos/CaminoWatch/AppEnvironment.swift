@@ -12,6 +12,9 @@ enum AppEnvironment {
         let credentials: any CredentialStore
         /// Llamada de emergencia: sistema (`tel:`) o simulada en escenarios DEMO.
         let dialer: any EmergencyDialer
+        /// `true` si la sesión se guarda en disco; `false` si sólo vive en memoria
+        /// (almacenamiento no disponible o escenario DEMO). El resumen lo dice.
+        let persistentStorage: Bool
     }
 
     static func make() -> Dependencies {
@@ -28,6 +31,7 @@ enum AppEnvironment {
 
         let sessionStore: any SessionStore
         let syncStore: any SyncQueueStore
+        var persistent = true
         do {
             let directory = try StorageLocation.directory()
             sessionStore = FileSessionStore(directory: directory)
@@ -37,6 +41,7 @@ enum AppEnvironment {
             Log.storage.error("Almacenamiento no disponible: \(Log.describe(error), privacy: .public)")
             sessionStore = InMemorySessionStore()
             syncStore = InMemorySyncQueueStore()
+            persistent = false
         }
 
         let controller = CaminoController(
@@ -54,7 +59,8 @@ enum AppEnvironment {
         return Dependencies(
             controller: controller,
             credentials: KeychainCredentialStore(),
-            dialer: SystemEmergencyDialer()
+            dialer: SystemEmergencyDialer(),
+            persistentStorage: persistent
         )
     }
 
@@ -130,7 +136,8 @@ extension AppEnvironment {
         return Dependencies(
             controller: controller,
             credentials: InMemoryCredentialStore(),
-            dialer: MockEmergencyDialer()
+            dialer: MockEmergencyDialer(),
+            persistentStorage: false
         )
     }
 }

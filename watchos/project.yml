@@ -42,6 +42,8 @@ targets:
         product: CaminoCore
       - package: CaminoCore
         product: CaminoDesign
+      # Swift Charts (perfil de altitud, V1.1). Sistema, watchOS 9+.
+      - sdk: Charts.framework
       # Extensión WidgetKit (complicaciones / Smart Stack), embebida en la app.
       - target: CaminoWidgets
         embed: true

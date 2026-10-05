@@ -66,7 +66,7 @@ watchos/
     ├── CaminoWatchApp.swift, AppModel.swift, AppEnvironment.swift
     ├── L10n.swift + es.lproj/Localizable.strings   textos centralizados (base: español)
     ├── Accessibility.swift      textos que lee VoiceOver ("4,2 kilómetros restantes")
-    ├── Views/                   Inicio, Elegir etapa, Etapa, Estadísticas, Resumen, Sincronización
+    ├── Views/                   Trayecto, Elegir etapa, Estadísticas, Perfil, Lugares, Ajustes, Esfera, Resumen, SOS…
     ├── Platform/                CLLocationManager, CMPedometer, notificaciones + háptica,
     │                                ficheros JSON protegidos, Keychain, os.Logger
     └── Assets.xcassets          AppIcon (vacío) y AccentColor
@@ -109,4 +109,27 @@ Cuando llegue el contrato se añade un `HttpCaminoApi` que implemente `CaminoApi
 - Sincronización: tras empezar, tras finalizar, al volver a primer plano y con el botón "Sincronizar ahora"
   (que ignora el backoff). La "recuperación de red" de §7 no se implementa: en V1 no hay red que vigilar.
 - Logs con `os.Logger`: sin coordenadas, tokens ni identificadores.
-- Sin HealthKit, sin complicación (llegará tras la V1 verde).
+- Sin HealthKit.
+
+### V1.1 (spec "V1.1": trayecto completo, complicaciones y organización)
+
+- Destinos: **Trayecto** (raíz), **Lugares** (`Route.nearby`, filtro todos/agua/alojamiento, distancias
+  "en línea recta"), **Ajustes** (cabecera) y SOS (cabecera, no es destino cotidiano).
+- Trayecto activo, en orden: estado «En marcha»/«Pausado», distancia, tiempo en movimiento, ritmo o
+  velocidad (sin datos → "sin datos") · altitud GPS, subida y bajada · perfil registrado (Swift Charts,
+  tramos con hueco sin unir; tocar → `ProfileDetailView`) · hasta 3 lugares útiles · «Pausar»/«Reanudar» y
+  «Finalizar trayecto». En pausa los sensores siguen (avisos POI) pero el núcleo no suma métricas.
+- `Preferences` (UserDefaults `settings.units`, `settings.paceMode`): métrico/imperial y ritmo/velocidad,
+  aplicados con `UnitDisplay` (sobre `UnitFormatter` del núcleo) a todas las cifras y a la instantánea de
+  los widgets. Idioma: el del reloj (`Bundle.main.preferredLocalizations`); watchOS no tiene API pública
+  para cambiarlo desde la app, así que Ajustes sólo lo explica.
+- Aviso «Accede desde tu esfera» (`FaceAccessPrompt`, UserDefaults `faceAccess.prompt` =
+  notDecided/dismissed/helpOpened): hoja que sólo aparece si no se ha decidido, no hay trayecto, este
+  arranque no restauró un trayecto y la pantalla principal ya se mostró en un arranque anterior
+  (heurística de "configuración inicial completada": `faceAccess.homeSeen`). Una vez por arranque.
+  «Ahora no» o cerrar la hoja → dismissed; «Cómo añadirlo» → helpOpened + `WatchFaceHelpView`; cerrar la
+  app con la hoja abierta → sigue notDecided. Ruta permanente: Ajustes → Acceso desde la esfera.
+- Complicaciones (`CaminoWidgets`): sin trayecto «Iniciar trayecto» (sólo abre la app, nunca inicia nada);
+  con trayecto distancia en las unidades del usuario + «en marcha»/«pausado»; datos de > 15 min →
+  "hace X min". Se verifican con los `#Preview` de `CaminoWidgets.swift` (simctl no las captura).
+- Escenarios DEMO nuevos: `-demo.scenario paused`; `-demo.route profile|places|settings-face|summary|face-prompt`.

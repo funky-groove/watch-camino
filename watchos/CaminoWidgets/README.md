@@ -4,16 +4,21 @@ Extensión WidgetKit (watchOS 10+) embebida en `CaminoWatch`
 (`org.caminoseguro.watch.widgets`, `NSExtensionPointIdentifier = com.apple.widgetkit-extension`).
 La define `watchos/project.yml`; el `Info.plist` lo genera XcodeGen y no se versiona.
 
-## Familias
+## Familias (V1.1 §H)
 
-| Familia | Con etapa | Sin etapa | Toque abre |
-|---|---|---|---|
-| `accessoryCircular` | `Gauge` recorrido/plan, cifra en km en el centro, etiqueta "km" ("DEMO" en demostración) | figura caminando | etapa / estadísticas |
-| `accessoryRectangular` (también Smart Stack) | nombre de etapa, "4,2 km de 22 km", tiempo con `Text(startedAt, style: .timer)` | "Sin etapa en curso" + "Última: … · 22 km" | etapa / estadísticas |
-| `accessoryInline` | "4,2 km · 1:05:12" (tiempo vivo) | "Camino Seguro" | etapa / estadísticas |
-| `accessoryCorner` | cifra en km + etiqueta curva "km de 22 km" | figura + "Sin etapa" | etapa / estadísticas |
+| Familia | Con trayecto | Sin trayecto |
+|---|---|---|
+| `accessoryCircular` | `Gauge` recorrido/plan, cifra en las unidades del usuario; etiqueta unidad o símbolo de pausa | figura caminando (VoiceOver: «Iniciar trayecto») |
+| `accessoryRectangular` (también Smart Stack) | nombre de etapa, "4,2 km de 22 km", «en marcha · 1:05:12» o «pausado» | «Iniciar trayecto» con icono + "Última: … · 22 km" |
+| `accessoryInline` | "4,2 km · en marcha" / "… · pausado" | «Iniciar trayecto» con icono |
+| `accessoryCorner` | cifra + etiqueta curva ("km de 22 km", "km · pausado") | figura + «Iniciar» |
 
-Enlaces: `widgetURL(DeepLink.stage.url)` con etapa, `DeepLink.stats.url` sin ella.
+Tocar abre siempre la pantalla Trayecto (`widgetURL(DeepLink.stage.url)`): **nunca** inicia un trayecto
+ni una llamada. Unidades e idioma (separadores) vienen de la instantánea (`units`, `lang`); los textos,
+del idioma del sistema. Si la instantánea de un trayecto tiene más de 15 min (`updatedAt`), se muestra
+"hace X min" en lugar del estado/tiempo (entradas de timeline cada 5 min a partir de ese punto): no se
+promete frescura. Las complicaciones no se capturan con `simctl`: se verifican con los `#Preview`
+(activo, pausado en millas, datos antiguos, sin trayecto, sin datos).
 
 Accesibilidad (STANDARDS_MATRIX H18, H19, Q16): sólo estilos de texto del sistema
 (`.headline`, `.body`, `.footnote`, `.title3`; ninguno por debajo de 11 pt), `Text` nativo,
@@ -28,12 +33,12 @@ con etiqueta "Sin GPS"). El color (token `positive`) sólo se aplica con
 `Shared/WidgetSnapshot.swift` (compilado en la app y en la extensión): JSON en el contenedor del
 App Group `group.org.caminoseguro.watch` (`widget-snapshot.json`), escritura atómica.
 Contiene nombre de etapa, inicio, metros recorridos/planificados, `hasFix`, `isDemo`,
-`updatedAt` y la última etapa terminada. **Nunca coordenadas** ni identificadores de sesión o POI.
+`updatedAt`, la última etapa terminada y (v2, V1.1) `isPaused`, `units` y `lang`. **Nunca coordenadas** ni identificadores de sesión o POI.
 
 - La app escribe desde `CaminoWatch/WidgetBridge.swift`, llamado en cada `refresh()` del modelo:
   escribe sólo si cambia algo visible (distancia ±100 m, etapa, GPS, demo, última etapa).
 - Pide `WidgetCenter.shared.reloadAllTimelines()` sólo: al empezar/terminar etapa (o cambio
-  demo), y durante la etapa cada ≥15 min, o antes si la distancia cambió ≥0,5 km (con un suelo
+  demo), al pausar/reanudar, al cambiar unidades o idioma, y durante la etapa cada ≥15 min, o antes si la distancia cambió ≥0,5 km (con un suelo
   de 5 min entre recargas).
 - Timeline: una entrada; política `.after(+15 min)` con etapa, `.never` sin etapa.
 - El tiempo de etapa avanza solo en la esfera (`Text(_, style: .timer)`), sin recargas.

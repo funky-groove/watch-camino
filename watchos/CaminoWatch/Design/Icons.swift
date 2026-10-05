@@ -25,6 +25,20 @@ enum Icon {
     static let theme = "circle.lefthalf.filled"
     static let phone = "phone"
     static let satellite = "antenna.radiowaves.left.and.right"
+    // V1.1
+    static let running = "figure.walk"
+    static let paused = "pause.circle"
+    static let pause = "pause"
+    static let resume = "play"
+    static let altitude = "mountain.2"
+    static let ascent = "arrow.up.right"
+    static let descent = "arrow.down.right"
+    static let profile = "chart.xyaxis.line"
+    static let watchFace = "applewatch.watchface"
+    static let units = "ruler"
+    static let language = "globe"
+    static let pace = "speedometer"
+    static let places = "mappin.and.ellipse"
 
     static func category(_ category: PoiCategory) -> String {
         switch category {

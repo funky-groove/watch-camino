@@ -2,22 +2,15 @@ import Foundation
 import CaminoCore
 
 /// Variantes habladas de los valores (§10): VoiceOver lee "4,2 kilómetros restantes",
-/// no "4,2 km". Se derivan de los mismos `Formatters` del núcleo para que el número
-/// leído coincida exactamente con el mostrado.
+/// no "4,2 km". Las cifras con unidades se derivan de `UnitDisplay` (preferencias del
+/// usuario) para que el número leído coincida exactamente con el mostrado.
 enum Spoken {
-    static func distance(meters: Double) -> String {
-        let text = Formatters.distance(meters: meters)
-        if text.hasSuffix(" km") {
-            return String(text.dropLast(3)) + " " + L10n.spokenKilometers
-        }
-        if text.hasSuffix(" m") {
-            return String(text.dropLast(2)) + " " + L10n.spokenMeters
-        }
-        return text
+    static func distance(meters: Double, _ display: UnitDisplay) -> String {
+        return display.spokenDistance(meters)
     }
 
-    static func distance(meters: Int) -> String {
-        return distance(meters: Double(meters))
+    static func distance(meters: Int, _ display: UnitDisplay) -> String {
+        return display.spokenDistance(meters)
     }
 
     static func duration(seconds input: Int) -> String {
@@ -30,15 +23,22 @@ enum Spoken {
         return L10n.spokenHours(hours) + " " + L10n.spokenMinutes(minutes)
     }
 
-    static func steps(_ count: Int) -> String {
-        return Formatters.steps(count) + " " + L10n.spokenSteps
+    static func duration(interval: TimeInterval) -> String {
+        guard interval.isFinite, interval > 0 else {
+            return duration(seconds: 0)
+        }
+        return duration(seconds: Int(min(interval, Double(Int32.max)).rounded(.down)))
     }
 
-    static func remaining(meters: Double) -> String {
-        return distance(meters: meters) + " " + L10n.remaining
+    static func steps(_ count: Int, _ display: UnitDisplay) -> String {
+        return display.spokenSteps(count)
     }
 
-    static func poiAlert(_ alert: PoiAlert) -> String {
-        return alert.poi.name + ", " + distance(meters: alert.distanceMeters)
+    static func remaining(meters: Double, _ display: UnitDisplay) -> String {
+        return display.spokenDistance(meters) + " " + L10n.remaining
+    }
+
+    static func poiAlert(_ alert: PoiAlert, _ display: UnitDisplay) -> String {
+        return alert.poi.name + ", " + display.spokenDistance(alert.distanceMeters)
     }
 }

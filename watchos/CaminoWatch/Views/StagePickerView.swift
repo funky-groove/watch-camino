@@ -7,6 +7,8 @@ import CaminoDesign
 /// pantalla principal). Tras confirmar, la lista se desactiva: un doble toque no inicia dos veces.
 struct StagePickerView: View {
     @EnvironmentObject private var model: AppModel
+    /// Cifras con las unidades y el idioma del usuario (V1.1 §G).
+    private var display: UnitDisplay { model.display }
     @Environment(\.palette) private var palette
     @State private var selected: Stage?
     @State private var confirming = false
@@ -68,15 +70,15 @@ struct StagePickerView: View {
             }
             Button(L10n.pickStageCancel, role: .cancel) {}
         } message: { stage in
-            Text(verbatim: stage.name + " · " + Formatters.distance(meters: stage.distanceMeters))
+            Text(verbatim: stage.name + " · " + display.distance(stage.distanceMeters))
         }
     }
 
     private func row(_ stage: Stage, suggested: Bool) -> some View {
-        let distance = Formatters.distance(meters: stage.distanceMeters)
+        let distance = display.distance(stage.distanceMeters)
         let detail = suggested ? L10n.pickStageSuggested + " · " + distance : distance
         let spoken = (suggested ? L10n.pickStageSuggested + ". " : "")
-            + stage.name + ", " + Spoken.distance(meters: stage.distanceMeters)
+            + stage.name + ", " + display.spokenDistance(stage.distanceMeters)
         return Button {
             selected = stage
             confirming = true
