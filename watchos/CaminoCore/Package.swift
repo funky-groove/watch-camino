@@ -11,11 +11,22 @@ let package = Package(
     ],
     products: [
         .library(name: "CaminoCore", targets: ["CaminoCore"]),
+        .library(name: "CaminoDesign", targets: ["CaminoDesign"]),
     ],
     targets: [
         .target(
             name: "CaminoCore",
             path: "Sources/CaminoCore"
+        ),
+        // Tokens de diseño como datos puros, para verificar el contraste con tests.
+        .target(
+            name: "CaminoDesign",
+            path: "Sources/CaminoDesign"
+        ),
+        .testTarget(
+            name: "CaminoDesignTests",
+            dependencies: ["CaminoDesign"],
+            path: "Tests/CaminoDesignTests"
         ),
         .testTarget(
             name: "CaminoCoreTests",
