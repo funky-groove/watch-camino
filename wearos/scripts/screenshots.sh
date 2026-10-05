@@ -18,6 +18,7 @@
 #   --es demo.theme    negro|perla
 #   --es demo.lang     es|en
 #   --es demo.facehint show|hide (aviso de primer uso; por defecto, hide)
+#   --es demo.welcome  show|hide (bienvenida visual §K; por defecto, hide: se mantiene hasta un toque)
 # Las capturas NO pulsan nada (SOS nunca toca «Llamar»; además el marcador es simulado en demo).
 #
 # Tolerante a fallos por captura; termina con error sólo si no se obtuvo NINGUNA captura
@@ -165,10 +166,10 @@ app_on_top() {
     | grep -E 'mResumedActivity|topResumedActivity|ResumedActivity:' | grep -q "$PKG/"
 }
 
-capture() {  # $1 pantalla, $2 escenario, $3 ruta, $4 tema, $5 idioma, $6 sufijo, $7 aviso de esfera
-  local screen="$1" scenario="$2" route="$3" theme="$4" lang="$5" suffix="$6" facehint="${7:-hide}"
+capture() {  # $1 pantalla, $2 escenario, $3 ruta, $4 tema, $5 idioma, $6 sufijo, $7 aviso de esfera, $8 bienvenida
+  local screen="$1" scenario="$2" route="$3" theme="$4" lang="$5" suffix="$6" facehint="${7:-hide}" welcome="${8:-hide}"
   local name="${DSLUG}_${theme}_${screen}${suffix}.png"
-  local args=(--es demo.scenario "$scenario" --es demo.theme "$theme" --es demo.lang "$lang" --es demo.facehint "$facehint")
+  local args=(--es demo.scenario "$scenario" --es demo.theme "$theme" --es demo.lang "$lang" --es demo.facehint "$facehint" --es demo.welcome "$welcome")
   [ -n "$route" ] && args+=(--es demo.route "$route")
 
   adb shell am force-stop "$PKG" >/dev/null 2>&1 || true
@@ -219,6 +220,8 @@ run_list() {  # $1 idioma, $2 sufijo, resto: entradas "pantalla|escenario|ruta[|
 
 # ---------------------------------------------------------------- 3. Capturas
 run_list es "" "${SCREENS[@]}"
+# Bienvenida visual (§K): sólo en negro (es una capa negra con el logo, igual en ambos temas).
+capture "bienvenida" idle "" negro es "" hide show
 
 if [ "$MODE" = "full" ]; then
   log "Pasada en inglés"

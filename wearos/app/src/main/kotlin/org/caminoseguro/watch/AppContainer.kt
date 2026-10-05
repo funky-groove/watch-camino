@@ -16,6 +16,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.caminoseguro.watch.complication.ComplicationUpdates
 import org.caminoseguro.watch.core.AppLanguage
+import org.caminoseguro.watch.core.BlockedBrandAssetSource
+import org.caminoseguro.watch.core.BrandAssetRepository
 import org.caminoseguro.watch.core.CaminoApi
 import org.caminoseguro.watch.core.CaminoController
 import org.caminoseguro.watch.core.CredentialStore
@@ -23,6 +25,7 @@ import org.caminoseguro.watch.core.DisplayFormat
 import org.caminoseguro.watch.core.DisplayPreferences
 import org.caminoseguro.watch.core.EmergencyDialer
 import org.caminoseguro.watch.core.FaceHintState
+import org.caminoseguro.watch.core.FileBrandAssetStore
 import org.caminoseguro.watch.core.FixturePoiSource
 import org.caminoseguro.watch.core.FixtureStageCatalog
 import org.caminoseguro.watch.core.MockCaminoApi
@@ -44,6 +47,7 @@ import org.caminoseguro.watch.data.FileStepCounterStore
 import org.caminoseguro.watch.data.FileSyncQueueStore
 import org.caminoseguro.watch.data.FileThemeStore
 import org.caminoseguro.watch.platform.AppLocale
+import org.caminoseguro.watch.platform.BrandBitmaps
 import org.caminoseguro.watch.platform.EmergencyLocationReader
 import org.caminoseguro.watch.platform.PoiNotifier
 import org.caminoseguro.watch.platform.SessionRuntime
@@ -51,6 +55,7 @@ import org.caminoseguro.watch.platform.SystemEmergencyDialer
 import org.caminoseguro.watch.platform.TelephonyProbe
 import org.caminoseguro.watch.security.KeystoreCredentialStore
 import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
 
 /** Composición manual de dependencias (sin framework de DI). */
 class AppContainer(private val app: Application) {
@@ -203,6 +208,43 @@ class AppContainer(private val app: Application) {
             }
         }
     }
+
+    // ---------------------------------------------------------------- Bienvenida visual (§K)
+
+    /**
+     * Caché del recurso de marca. El origen remoto está BLOQUEADO ([BlockedBrandAssetSource]: no
+     * descarga nada y el manifiesto no declara INTERNET), así que en la práctica se usa siempre el
+     * logo incluido. Al abrir sólo se lee la caché local ([BrandAssetRepository.current], en IO).
+     */
+    val brandAssets: BrandAssetRepository = BrandAssetRepository(
+        store = FileBrandAssetStore(File(dataDir, "brand")),
+        source = BlockedBrandAssetSource,
+        clock = WallClock,
+        decodable = BrandBitmaps::canDecode,
+    )
+
+    private val brandRefreshRequested = AtomicBoolean(false)
+
+    /** Refresco del recurso de marca SÓLO en segundo plano (al salir de la app), una vez por proceso. */
+    fun refreshBrandAssetInBackground() {
+        if (!brandRefreshRequested.compareAndSet(false, true)) return
+        appScope.launch(Dispatchers.IO) {
+            val outcome = brandAssets.refresh()
+            Log.i(TAG, "Recurso de marca: $outcome")
+        }
+    }
+
+    private val activityCreatedOnce = AtomicBoolean(false)
+
+    /**
+     * §K.2 (1): apertura desde cero = primer `onCreate` de la actividad en este proceso y sin
+     * estado guardado (una recreación por idioma/configuración no cuenta). Se consume al llamarla.
+     */
+    fun takeColdStart(hasSavedState: Boolean): Boolean =
+        !activityCreatedOnce.getAndSet(true) && !hasSavedState
+
+    /** §K.2 (4): la bienvenida ya se mostró en este proceso. */
+    @Volatile var welcomeShown: Boolean = false
 
     // ---------------------------------------------------------------- SOS (sin sesión ni backend)
 

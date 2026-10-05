@@ -23,4 +23,12 @@ object DemoHooks {
      */
     @Volatile
     var allowedNavUri: String? = null
+
+    /**
+     * Bienvenida visual (§K) en escenarios de demostración. Null en main/Release y en Debug sin
+     * escenario: se aplica `WelcomePolicy`. `false`: un escenario DEMO no la muestra. `true`
+     * (`demo.welcome=show`): se muestra y se mantiene hasta un toque, para poder capturarla.
+     */
+    @Volatile
+    var welcomeDemo: Boolean? = null
 }

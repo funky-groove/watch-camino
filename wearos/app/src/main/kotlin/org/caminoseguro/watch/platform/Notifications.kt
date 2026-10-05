@@ -51,8 +51,15 @@ object Notifications {
         manager.createNotificationChannels(listOf(session, poi))
     }
 
+    /**
+     * Acción de las notificaciones al abrir la app: marca el lanzamiento como enlace directo
+     * (sin bienvenida visual, §K.2). No navega a ningún sitio concreto.
+     */
+    const val ACTION_OPEN_FROM_NOTIFICATION = "org.caminoseguro.watch.action.OPEN_FROM_NOTIFICATION"
+
     fun openAppIntent(context: Context): PendingIntent {
         val intent = Intent(context, MainActivity::class.java)
+            .setAction(ACTION_OPEN_FROM_NOTIFICATION)
             .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         return PendingIntent.getActivity(
             context,

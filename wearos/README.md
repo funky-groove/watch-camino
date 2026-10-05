@@ -171,3 +171,21 @@ Cuando llegue el contrato se añade un adaptador `HttpCaminoApi` en `src/release
 - **Escenarios de demostración** (sólo Debug): `DemoHooks.apply` (null en `main`) lo invoca
   `MainActivity.onCreate` antes de `setContent`; `AppContainer.installDemo(controller, dialer, storageDir)`
   sustituye controlador, marcador y almacenes de preferencias sin tocar los datos reales.
+
+## Bienvenida visual (spec §K)
+
+- **Núcleo** (`core/BrandAsset.kt`, tests `BrandAssetTest`): `BrandAssetValidator` (0 < bytes ≤ 512 KiB,
+  firma PNG, IHDR legible con CRC, cuadrada 256–2048 px, `sha256` del manifiesto si lo hay),
+  `BrandAssetCacheMeta`, `BrandAssetRepository` (al abrir lee sólo la caché; `refresh()` descarga a un
+  temporal, valida + decodificación de plataforma y sustituye atómicamente; un recurso inválido nunca
+  reemplaza a uno válido), `WelcomePolicy.shouldShow` y `WelcomeTiming` (0,6 s visible + 0,4 s fundido).
+- **Origen remoto BLOQUEADO**: `BlockedBrandAssetSource` no descarga nada y no se declara `INTERNET`;
+  la app muestra siempre el logo incluido (`res/drawable-nodpi/brand_logo.png`, concha de cruz roja).
+  Caché en `filesDir/camino/brand/`; el refresco sólo se pide al pasar a segundo plano (`onStop`).
+- **Presentación** (`ui/Welcome.kt`): capa negra sobre la interfaz ya compuesta; no consume toques
+  (un toque la retira), sin semántica para TalkBack. Con escala de animaciones 0 («Quitar
+  animaciones») se retira de golpe a los 0,6 s. Sólo en arranque en frío, sin trayecto activo ni
+  restaurado, sin enlace directo (complicación, notificación, datos de navegación) ni SOS, una vez por
+  proceso. Splash del sistema intacto.
+- **Demo**: los escenarios no la muestran salvo `--es demo.welcome show` (se mantiene hasta un toque);
+  `scripts/screenshots.sh` captura `bienvenida` (negro).

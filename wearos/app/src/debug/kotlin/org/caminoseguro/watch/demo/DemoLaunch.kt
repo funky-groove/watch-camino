@@ -16,6 +16,8 @@ import org.caminoseguro.watch.core.ThemeId
  * - `demo.lang`:     es | en (por defecto, el idioma del sistema).
  * - `demo.facehint`: show | hide (por defecto, hide): aviso «Accede desde tu esfera» (§I) sin
  *                    decidir (se ofrece) o ya descartado (no tapa las demás pantallas).
+ * - `demo.welcome`:  show | hide (por defecto, hide): bienvenida visual (§K). Con show se muestra
+ *                    sobre la pantalla pedida y se mantiene hasta un toque (para capturarla).
  */
 data class DemoLaunch(
     val scenario: DemoScenario,
@@ -23,6 +25,7 @@ data class DemoLaunch(
     val theme: ThemeId?,
     val lang: String?,
     val showFaceHint: Boolean = false,
+    val showWelcome: Boolean = false,
 ) {
     companion object {
         const val EXTRA_SCENARIO = "demo.scenario"
@@ -30,6 +33,7 @@ data class DemoLaunch(
         const val EXTRA_THEME = "demo.theme"
         const val EXTRA_LANG = "demo.lang"
         const val EXTRA_FACE_HINT = "demo.facehint"
+        const val EXTRA_WELCOME = "demo.welcome"
 
         /** Null si el Intent no pide escenario (lanzamiento normal) o el escenario no existe. */
         fun from(intent: Intent?): DemoLaunch? {
@@ -46,7 +50,8 @@ data class DemoLaunch(
                 ?.lowercase()
                 ?.takeIf { it == "es" || it == "en" }
             val showFaceHint = intent.getStringExtra(EXTRA_FACE_HINT)?.trim()?.lowercase() == "show"
-            return DemoLaunch(scenario, route, theme, lang, showFaceHint)
+            val showWelcome = intent.getStringExtra(EXTRA_WELCOME)?.trim()?.lowercase() == "show"
+            return DemoLaunch(scenario, route, theme, lang, showFaceHint, showWelcome)
         }
     }
 }

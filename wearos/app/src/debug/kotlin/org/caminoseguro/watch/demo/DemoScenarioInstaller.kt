@@ -59,7 +59,9 @@ object DemoScenarioInstaller {
     fun onActivityPreCreated(activity: Activity, firstCreate: Boolean) {
         val launch = DemoLaunch.from(activity.intent) ?: return
         pending = launch
-        Log.i(TAG, "Escenario demo: ${launch.scenario.key} ruta=${launch.route ?: "home"} tema=${launch.theme?.storageKey} idioma=${launch.lang}")
+        // Bienvenida visual (§K): un escenario DEMO no la muestra salvo demo.welcome=show.
+        DemoHooks.welcomeDemo = launch.showWelcome
+        Log.i(TAG, "Escenario demo: ${launch.scenario.key} ruta=${launch.route ?: "home"} tema=${launch.theme?.storageKey} idioma=${launch.lang} bienvenida=${launch.showWelcome}")
         launch.lang?.let { applyLocale(activity, it) }
         if (firstCreate) launch.route?.let { applyRoute(activity.intent, it) }
     }
