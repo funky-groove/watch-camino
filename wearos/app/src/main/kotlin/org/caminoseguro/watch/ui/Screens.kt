@@ -210,7 +210,9 @@ fun SummaryScreen(state: CaminoUiState, onDone: () -> Unit) {
                     ProfileChart(summary.profile, height = 36.dp)
                 }
             }
-            item { CenteredText(stringResource(R.string.summary_saved_watch), style = MaterialTheme.typography.caption1) }
+            // F-09: en escenarios DEMO el almacén es de memoria; no se afirma «Guardado en el reloj».
+            val savedText = if (state.sessionPersisted) R.string.summary_saved_watch else R.string.summary_saved_memory_demo
+            item { CenteredText(stringResource(savedText), style = MaterialTheme.typography.caption1) }
             item { CenteredText(summarySyncText(state), style = MaterialTheme.typography.caption2) }
         }
         item { WideChip(text = stringResource(R.string.action_done), onClick = onDone, primary = true) }

@@ -37,7 +37,8 @@ android {
 
     buildFeatures {
         compose = true
-        buildConfig = false
+        // BuildConfig.DEBUG: cerrojo de los escenarios demo (src/debug, F-01).
+        buildConfig = true
     }
 
     sourceSets {

@@ -1,5 +1,11 @@
 import Foundation
 
+/// Errores de E/S de `CaminoController` que dejan el estado intacto y se pueden reintentar.
+public enum ControllerError: Error, Equatable, Sendable {
+    /// No se pudo guardar en disco el nuevo estado; la transición no se aplicó.
+    case storageFailed
+}
+
 /// Servicio de aplicación del núcleo: orquesta máquina de estados + persistencia +
 /// sincronización para que la capa app (SwiftUI + sensores) sea fina.
 ///
@@ -276,12 +282,24 @@ public final class CaminoController {
         return machine.state.isPaused
     }
 
-    /// Active → Idle (cierra la pausa en curso si la hay). Persiste, encola `stage_finished`
-    /// y dispara sincronización.
+    /// Active → Idle (cierra la pausa en curso si la hay). Persiste PRIMERO el nuevo estado;
+    /// sólo si el guardado va bien encola `stage_finished` y dispara sincronización.
+    ///
+    /// Si falla el guardado, la máquina vuelve al estado previo (trayecto activo, nada
+    /// encolado) y se lanza `ControllerError.storageFailed`: es recuperable, el usuario puede
+    /// reintentar «Finalizar» sin generar un segundo `stage_finished` para la misma sesión.
+    /// - Throws: `SessionError.notActive` o `ControllerError.storageFailed`.
     @discardableResult
     public func finish() throws -> SessionSummary {
+        let previous = machine
         let result = try machine.finish(now: clock.now())
-        persistSession()
+        do {
+            try sessionStore.save(PersistedSession(state: machine.state, history: machine.history))
+        } catch {
+            machine = previous
+            onStorageError?(error)
+            throw ControllerError.storageFailed
+        }
         sync.enqueue(result.events)
         notifyChange()
         triggerAutoSync()

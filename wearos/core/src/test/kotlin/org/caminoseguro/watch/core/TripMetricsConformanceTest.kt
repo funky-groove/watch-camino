@@ -51,7 +51,7 @@ class TripMetricsConformanceTest {
 
     @Test
     fun allCasesPure() {
-        assertEquals(10, cases.size)
+        assertEquals(12, cases.size)
         for (c in cases) {
             val name = c.obj["name"]!!.s
             val cap = c.obj["profileCap"]!!.i
@@ -96,6 +96,6 @@ class TripMetricsConformanceTest {
             check(name, c.obj["expected"]!!, snap.activeSession!!, ignored)
             checked++
         }
-        assertEquals(9, checked)
+        assertEquals(10, checked)
     }
 }

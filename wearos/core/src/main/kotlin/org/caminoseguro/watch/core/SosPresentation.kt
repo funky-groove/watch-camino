@@ -40,6 +40,9 @@ enum class SosOutcomeMessage {
 
     /** Fallo: las mismas instrucciones. */
     FAILED,
+
+    /** "Simulado: no se ha abierto el marcador." (marcador simulado de los escenarios DEMO). */
+    SIMULATED,
 }
 
 data class SosViewState(
@@ -51,6 +54,8 @@ data class SosViewState(
     val actionEnabled: Boolean,
     val outcome: SosOutcomeMessage?,
     val location: EmergencyLocationSummary,
+    /** El marcador es simulado (escenario DEMO): marca DEMO visible y aviso de que no se abre nada. */
+    val simulated: Boolean = false,
 )
 
 object SosPresentation {
@@ -63,6 +68,7 @@ object SosPresentation {
         DialResult.HandedToSystem -> SosOutcomeMessage.DIALER_OPENED
         DialResult.NoDialer -> SosOutcomeMessage.NO_DIALER
         DialResult.Failed -> SosOutcomeMessage.FAILED
+        DialResult.Simulated -> SosOutcomeMessage.SIMULATED
     }
 
     fun state(
@@ -70,13 +76,16 @@ object SosPresentation {
         capability: TelephonyCapability,
         lastResult: DialResult?,
         location: EmergencyLocationSummary,
+        simulated: Boolean = false,
     ): SosViewState = SosViewState(
         number = number,
         actionLabel = actionLabel(capability),
         showNoCallingNotice = !capability.declaresCalling,
         actionEnabled = true,
-        outcome = outcome(lastResult),
+        // Con marcador simulado nunca se afirma que se abrió el marcador.
+        outcome = outcome(if (simulated && lastResult == DialResult.HandedToSystem) DialResult.Simulated else lastResult),
         location = location,
+        simulated = simulated,
     )
 }
 
@@ -91,13 +100,20 @@ class SosController(
     private val _lastResult = MutableStateFlow<DialResult?>(null)
     val lastResult: StateFlow<DialResult?> = _lastResult.asStateFlow()
 
-    /** Pide el marcador. Un fallo inesperado del adaptador se convierte en [DialResult.Failed]. */
+    /** El marcador no abre nada (escenario DEMO): la pantalla muestra la marca DEMO. */
+    val isSimulated: Boolean get() = dialer.isSimulated
+
+    /**
+     * Pide el marcador. Un fallo inesperado del adaptador se convierte en [DialResult.Failed]; un
+     * «entregado» de un marcador simulado, en [DialResult.Simulated] (no se abrió nada).
+     */
     fun dial(): DialResult {
-        val result = try {
+        val raw = try {
             dialer.requestDial(number)
         } catch (e: RuntimeException) {
             DialResult.Failed
         }
+        val result = if (dialer.isSimulated && raw == DialResult.HandedToSystem) DialResult.Simulated else raw
         _lastResult.value = result
         return result
     }

@@ -41,6 +41,7 @@
 "demo.a11y" = "Modo demostración. Los datos no se envían a ningún servidor.";
 "demo.badge" = "DEMO";
 "error.finish" = "No se pudo finalizar el trayecto.";
+"error.finishNotSaved" = "No se pudo guardar en el reloj. El trayecto sigue en marcha: vuelve a intentar finalizar.";
 "error.pause" = "No se pudo pausar el trayecto.";
 "error.recover" = "No se pudo recuperar la etapa anterior. Se ha guardado una copia en el reloj.";
 "error.resume" = "No se pudo reanudar el trayecto.";
@@ -214,6 +215,7 @@
 "sos.native.section" = "SOS del reloj";
 "sos.result.failed" = "No se pudo pedir la llamada. Usa el SOS del reloj: mantén pulsado el botón lateral.";
 "sos.result.handed" = "Llamada solicitada al reloj. Si no aparece, usa el SOS del reloj: mantén pulsado el botón lateral.";
+"sos.result.simulated" = "Simulado: no se ha pedido ninguna llamada.";
 "sos.satellite" = "En Apple Watch Ultra 3 o posterior y regiones compatibles, el SOS del reloj puede enviar mensajes por satélite; esta app no lo controla.";
 "sos.scope" = "112: España y UE";
 "sos.title" = "emergencia";

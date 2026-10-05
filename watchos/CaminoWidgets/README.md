@@ -18,7 +18,7 @@ ni una llamada. Unidades e idioma (separadores) vienen de la instantánea (`unit
 del idioma del sistema. Si la instantánea de un trayecto tiene más de 15 min (`updatedAt`), se muestra
 "hace X min" en lugar del estado/tiempo (entradas de timeline cada 5 min a partir de ese punto): no se
 promete frescura. Las complicaciones no se capturan con `simctl`: se verifican con los `#Preview`
-(activo, pausado en millas, datos antiguos, sin trayecto, sin datos).
+(activo, pausado en millas, sin GPS, datos antiguos, sin trayecto, sin datos).
 
 Accesibilidad (STANDARDS_MATRIX H18, H19, Q16): sólo estilos de texto del sistema
 (`.headline`, `.body`, `.footnote`, `.title3`; ninguno por debajo de 11 pt), `Text` nativo,
@@ -26,7 +26,9 @@ la información nunca depende del color (cifra + unidad siempre en texto; icono 
 con etiqueta "Sin GPS"). El color (token `positive`) sólo se aplica con
 `widgetRenderingMode == .fullColor`; en modos acentuado y monocromo (`vibrant`) se usa
 `widgetAccentable()` en la cifra principal. Etiquetas VoiceOver explícitas.
-"DEMO" visible cuando la instantánea viene del modo demostración.
+"DEMO" visible cuando la instantánea viene del modo demostración (en todas las familias, también en
+pausa y sin GPS). Con trayecto pero sin ningún fix válido todavía, la esfera dice "Sin GPS" (icono
+`location.slash`) y nunca "0 km".
 
 ## Fuente de datos
 

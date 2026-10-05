@@ -48,6 +48,8 @@ import java.time.Instant
 data class CaminoUiState(
     val ready: Boolean = false,
     val isDemo: Boolean = false,
+    /** El trayecto se guarda en disco (false en escenarios DEMO en memoria). */
+    val sessionPersisted: Boolean = true,
     val active: ActiveStageUi? = null,
     val choices: List<StageChoice> = emptyList(),
     val selected: Stage? = null,
@@ -131,6 +133,7 @@ class CaminoViewModel(
         CaminoUiState(
             ready = c.ready,
             isDemo = container.isDemo,
+            sessionPersisted = container.sessionPersisted,
             active = active,
             choices = Presentation.stageChoices(c.stages, c.snapshot.history),
             selected = c.stages.firstOrNull { it.id == selectedId },
@@ -220,6 +223,14 @@ class CaminoViewModel(
 
     fun dismissFaceHint() = container.setFaceHint(FaceHintState.dismissed)
 
+    /**
+     * F-10 (paridad con watchOS): cerrar el aviso con el gesto del sistema (deslizar/atrás) cuenta
+     * como «Ahora no». No pisa una decisión ya tomada («Cómo añadirlo» → helpOpened).
+     */
+    fun dismissFaceHintIfUndecided() {
+        if (container.faceHint.value == FaceHintState.notDecided) dismissFaceHint()
+    }
+
     fun faceHintHelpOpened() = container.setFaceHint(FaceHintState.helpOpened)
 
     // ------------------------------------------------------------ Lugares (§J)
@@ -300,6 +311,7 @@ class CaminoViewModel(
             capability = container.telephony,
             lastResult = result,
             location = EmergencyLocationSummary.of(best, now, permission),
+            simulated = sos.isSimulated,
         )
     }.stateIn(
         viewModelScope,
@@ -309,6 +321,7 @@ class CaminoViewModel(
             container.telephony,
             null,
             EmergencyLocationSummary.of(null, Instant.now(), EmergencyLocationPermission.NOT_DETERMINED),
+            simulated = sos.isSimulated,
         ),
     )
 

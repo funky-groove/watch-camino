@@ -76,6 +76,9 @@ enum L10n {
 
     static var errorStart: String { tr("error.start", "No se pudo iniciar el trayecto.") }
     static var errorFinish: String { tr("error.finish", "No se pudo finalizar el trayecto.") }
+    static var errorFinishNotSaved: String {
+        tr("error.finishNotSaved", "No se pudo guardar en el reloj. El trayecto sigue en marcha: vuelve a intentar finalizar.")
+    }
     static var errorRecover: String {
         tr("error.recover", "No se pudo recuperar la etapa anterior. Se ha guardado una copia en el reloj.")
     }

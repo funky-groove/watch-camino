@@ -69,6 +69,10 @@ struct SOSView: View {
     private func resultLine(_ result: DialResult) -> some View {
         switch result {
         case .handedToSystem:
+            // Con el marcador simulado (DEMO) no se ha pedido nada al sistema.
+            if model.usesSimulatedDialer {
+                return StatusLine(symbol: Icon.info, text: L10n.sosSimulated)
+            }
             return StatusLine(symbol: Icon.phone, text: L10n.sosHandedToSystem)
         case .failed:
             return StatusLine(symbol: Icon.warning, text: L10n.sosFailed, tone: .critical)

@@ -156,6 +156,8 @@
     <string name="sos_result_dialer_opened">Dialer opened with 112. Press call if it is safe.</string>
     <string name="sos_result_no_dialer">This watch did not open the dialer. Use the watch SOS (it varies by manufacturer) or call 112 from your phone.</string>
     <string name="sos_result_failed">Could not open the dialer. Use the watch SOS (it varies by manufacturer) or call 112 from your phone.</string>
+    <string name="sos_result_simulated">Simulated: the dialer was not opened.</string>
+    <string name="sos_demo_notice">Demo mode: no call is opened.</string>
     <string name="sos_scope">112: Spain and EU</string>
     <string name="sos_location_section">Your location</string>
     <string name="sos_location_current">Current location</string>
@@ -251,6 +253,7 @@
     <string name="summary_avg_pace">Average pace</string>
     <string name="summary_avg_speed">Average speed</string>
     <string name="summary_saved_watch">Saved on the watch</string>
+    <string name="summary_saved_memory_demo">Demo: kept in memory only</string>
     <string name="summary_sync_blocked">Upload not available (no server)</string>
     <string name="summary_sync_demo">Simulated upload (demo)</string>
     <string name="summary_sync_pending">Waiting to upload</string>
@@ -289,4 +292,6 @@
     <string name="complication_long_trip">%1$s · %2$s</string>
     <string name="complication_idle_a11y">Camino Seguro: start trip</string>
     <string name="complication_trip_a11y">Camino Seguro: %1$s, %2$s</string>
+    <string name="complication_no_gps">no GPS</string>
+    <string name="complication_no_gps_a11y">no GPS location</string>
 </resources>

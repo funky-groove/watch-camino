@@ -4,9 +4,11 @@ import android.app.Activity
 import android.app.Application
 import android.content.ContentProvider
 import android.content.ContentValues
+import android.content.pm.ApplicationInfo
 import android.database.Cursor
 import android.net.Uri
 import android.os.Bundle
+import org.caminoseguro.watch.BuildConfig
 import org.caminoseguro.watch.CaminoApplication
 import org.caminoseguro.watch.DemoHooks
 
@@ -25,6 +27,11 @@ class DemoBootstrapProvider : ContentProvider() {
 
     override fun onCreate(): Boolean {
         val app = context?.applicationContext as? Application ?: return true
+        // F-01: doble cerrojo además de existir sólo en src/debug: build Debug y proceso depurable.
+        // (No se puede saber con certeza si el lanzamiento viene de adb/shell; por eso la pantalla
+        // SOS marca DEMO y «Simulado» siempre que el marcador sea el simulado.)
+        val debuggable = (app.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (!BuildConfig.DEBUG || !debuggable) return true
         registerHook(app)
         app.registerActivityLifecycleCallbacks(Callbacks(app))
         return true

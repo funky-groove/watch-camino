@@ -73,6 +73,11 @@ struct WidgetSnapshot: Codable, Equatable {
         return startedAt != nil
     }
 
+    /// Etapa en curso sin ningún fix válido todavía: la esfera dice «Sin GPS», nunca «0 km».
+    var awaitingFirstFix: Bool {
+        return isActive && !hasFix && !(walkedMeters > 0)
+    }
+
     /// Fracción recorrido / plan en 0...1 (0 si el plan es desconocido).
     var progress: Double {
         guard plannedMeters > 0 else {

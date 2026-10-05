@@ -143,18 +143,20 @@ struct HomeView: View {
 
         // Filas compactas (no pulsables) para que A quepa sin desplazarse en 40 mm;
         // el detalle del tiempo está en Estadísticas.
+        // F-06: en vivo también `min(movimiento, duración)`, como en el resumen.
+        let moving = model.liveMovingSeconds(session)
         CompactMetricRow(
             label: L10n.tripMovingTimeShort,
-            value: display.duration(interval: session.movingSeconds),
-            spokenValue: Spoken.duration(interval: session.movingSeconds)
+            value: display.duration(interval: moving),
+            spokenValue: Spoken.duration(interval: moving)
         )
 
         CompactMetricRow(
             label: display.paceOrSpeedLabel,
-            value: display.paceOrSpeed(distanceMeters: session.distanceMeters, movingSeconds: session.movingSeconds),
+            value: display.paceOrSpeed(distanceMeters: session.distanceMeters, movingSeconds: moving),
             spokenValue: display.spokenPaceOrSpeed(
                 distanceMeters: session.distanceMeters,
-                movingSeconds: session.movingSeconds
+                movingSeconds: moving
             )
         )
 

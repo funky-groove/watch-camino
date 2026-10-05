@@ -95,13 +95,15 @@ public struct TripMetrics: Equatable, Sendable {
         return pausedAt != nil
     }
 
-    /// En marcha → Pausado. `lastFix = nil` para no contar lo recorrido en pausa.
+    /// En marcha → Pausado. `lastFix = nil` y `altitudeRef = nil` para que ni el tramo ni el
+    /// desnivel recorridos en pausa se cuenten al reanudar (V1.1 §C).
     public mutating func pause(at now: Date) throws {
         if pausedAt != nil {
             throw SessionError.alreadyPaused
         }
         pausedAt = now
         lastFix = nil
+        altitudeRef = nil
     }
 
     /// Pausado → En marcha. `pausedSeconds += max(0, now − pausedAt)`.
@@ -188,7 +190,9 @@ public struct TripMetrics: Equatable, Sendable {
         }
         let gap: Bool
         if let last = profile.last {
-            gap = dist - last.d > TripMetrics.profileGapMeters
+            // El umbral crece con el espaciado (§F): tras recortar, dos muestras seguidas pueden
+            // estar a `spacing` sin que falten datos.
+            gap = dist - last.d > max(TripMetrics.profileGapMeters, 2 * profileSpacing)
         } else {
             gap = false
         }

@@ -10,6 +10,7 @@
 "widget.last" = "Last";
 "widget.open" = "Open Camino Seguro";
 "widget.open.short" = "Open";
+"widget.gps.short" = "GPS";
 "widget.nogps" = "No GPS";
 "widget.elapsed.a11y" = "Time";
 "widget.of" = "of %@";

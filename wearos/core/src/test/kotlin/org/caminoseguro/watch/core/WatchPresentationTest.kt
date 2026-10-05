@@ -148,6 +148,28 @@ class WatchPresentationTest {
         assertEquals("2.6 mi", p.distanceText)
         assertTrue(p.paused)
         assertNull(p.progress)
+        assertFalse(trip.noGps)
+        assertFalse(trip.demo)
+    }
+
+    /** F-08: sin ningún fix válido la complicación dice «sin GPS» (no «0 km»); DEMO se marca. */
+    @Test
+    fun complicationNoGpsAndDemo() {
+        val format = DisplayFormat()
+        val fresh = StageSession("S", "s", epoch(0.0))
+        val c = ComplicationContent.of(SessionSnapshot(SessionState.Active(fresh)), null, format, demo = true) as ComplicationContent.Trip
+        assertTrue(c.noGps)
+        assertTrue(c.demo)
+        val fix = LocationFix(origin, 5.0, epoch(1.0))
+        val withFix = ComplicationContent.of(SessionSnapshot(SessionState.Active(fresh.copy(lastFix = fix))), null, format) as ComplicationContent.Trip
+        assertFalse(withFix.noGps)
+        // Pausa tras andar: lastFix = null, pero la distancia delata que hubo fixes.
+        val pausedAfterWalk = fresh.copy(distanceMeters = 300.0, pausedAt = epoch(10.0))
+        assertFalse((ComplicationContent.of(SessionSnapshot(SessionState.Active(pausedAfterWalk)), null, format) as ComplicationContent.Trip).noGps)
+        // El primer fix pide actualizar enseguida (aunque el texto de distancia no cambie).
+        val k0 = ComplicationRefreshPolicy.Key.of(SessionSnapshot(SessionState.Active(fresh)), format)
+        val k1 = ComplicationRefreshPolicy.Key.of(SessionSnapshot(SessionState.Active(fresh.copy(lastFix = fix))), format)
+        assertTrue(ComplicationRefreshPolicy.shouldRequest(k0, k1, epoch(0.0), epoch(1.0)))
     }
 
     @Test

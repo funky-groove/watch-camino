@@ -22,6 +22,10 @@ extension L10n {
     static var sosHandedToSystem: String {
         tr("sos.result.handed", "Llamada solicitada al reloj. Si no aparece, usa el SOS del reloj: mantén pulsado el botón lateral.")
     }
+    /// Marcador simulado (escenarios DEMO): nunca «Llamada solicitada».
+    static var sosSimulated: String {
+        tr("sos.result.simulated", "Simulado: no se ha pedido ninguna llamada.")
+    }
     static var sosFailed: String {
         tr("sos.result.failed", "No se pudo pedir la llamada. Usa el SOS del reloj: mantén pulsado el botón lateral.")
     }

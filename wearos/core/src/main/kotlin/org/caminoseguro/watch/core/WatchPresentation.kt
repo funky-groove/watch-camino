@@ -278,15 +278,34 @@ sealed interface ComplicationContent {
         val paused: Boolean,
         /** Recorrido / plan de la etapa en [0, 1]; null si no se conoce el plan. */
         val progress: Float?,
+        /** Ningún fix válido en la sesión: se muestra «sin GPS», no «0 km» (F-08). */
+        val noGps: Boolean = false,
+        /** Datos DEMO (adaptador simulado): marca «DEMO» visible (F-08, paridad con el widget watchOS). */
+        val demo: Boolean = false,
     ) : ComplicationContent
 
     companion object {
-        fun of(snapshot: SessionSnapshot, stage: Stage?, format: DisplayFormat): ComplicationContent {
+        fun of(snapshot: SessionSnapshot, stage: Stage?, format: DisplayFormat, demo: Boolean = false): ComplicationContent {
             val s = snapshot.activeSession ?: return NoTrip
             val plan = stage?.takeIf { it.id == s.stageId }?.distanceMeters?.takeIf { it > 0 }
             val progress = plan?.let { (s.distanceMeters / it).coerceIn(0.0, 1.0).toFloat() }
-            return Trip(format.distance(s.distanceMeters), format.distanceSpoken(s.distanceMeters), s.isPaused, progress)
+            return Trip(
+                distanceText = format.distance(s.distanceMeters),
+                distanceSpoken = format.distanceSpoken(s.distanceMeters),
+                paused = s.isPaused,
+                progress = progress,
+                noGps = hasNoFix(s),
+                demo = demo,
+            )
         }
+
+        /**
+         * La sesión no tiene ningún fix válido: sin ancla, sin distancia, sin altitud ni perfil.
+         * (No se guarda un indicador aparte; tras una pausa `lastFix` es null pero la distancia o la
+         * altitud ya delatan que hubo fixes.)
+         */
+        fun hasNoFix(s: StageSession): Boolean =
+            s.lastFix == null && s.distanceMeters <= 0.0 && s.altitude == null && s.profile.isEmpty()
     }
 }
 
@@ -303,11 +322,19 @@ object ComplicationRefreshPolicy {
         val paused: Boolean,
         val distanceText: String?,
         val format: DisplayFormat,
+        /** «sin GPS» ↔ distancia: se pide enseguida al llegar el primer fix. */
+        val noGps: Boolean = false,
     ) {
         companion object {
             fun of(snapshot: SessionSnapshot, format: DisplayFormat): Key {
                 val s = snapshot.activeSession
-                return Key(s?.sessionId, s?.isPaused ?: false, s?.let { format.distance(it.distanceMeters) }, format)
+                return Key(
+                    s?.sessionId,
+                    s?.isPaused ?: false,
+                    s?.let { format.distance(it.distanceMeters) },
+                    format,
+                    s?.let { ComplicationContent.hasNoFix(it) } ?: false,
+                )
             }
         }
     }
@@ -317,6 +344,7 @@ object ComplicationRefreshPolicy {
         if (lastRequested == null || lastRequestAt == null) return true
         if (lastRequested.sessionId != next.sessionId || lastRequested.paused != next.paused) return true
         if (lastRequested.format != next.format) return true
+        if (lastRequested.noGps != next.noGps) return true
         if (lastRequested.distanceText != next.distanceText) {
             val elapsed = secondsBetween(lastRequestAt, now)
             return elapsed < 0 || elapsed >= DISTANCE_INTERVAL_S

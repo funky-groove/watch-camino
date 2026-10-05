@@ -13,6 +13,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 import org.caminoseguro.watch.AppContainer
+import org.caminoseguro.watch.DemoHooks
 import org.caminoseguro.watch.core.CaminoController
 import org.caminoseguro.watch.core.FaceHintState
 import org.caminoseguro.watch.core.FakeEmergencyDialer
@@ -101,7 +102,10 @@ object DemoScenarioInstaller {
      * sitio: inicio debajo y la ruta pedida encima (atrás vuelve a inicio).
      */
     private fun applyRoute(intent: Intent, route: String) {
-        intent.data = Uri.parse(NAV_ROUTE_URI_PREFIX + route)
+        val uri = NAV_ROUTE_URI_PREFIX + route
+        // MainActivity descarta cualquier otra URI de navegación (F-05).
+        DemoHooks.allowedNavUri = uri
+        intent.data = Uri.parse(uri)
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
     }
 
@@ -127,6 +131,8 @@ object DemoScenarioInstaller {
             ids = UuidGenerator,
             scope = scope,
         )
+        // Marcador simulado: `isSimulated` → la pantalla SOS muestra DEMO y «Simulado: no se ha
+        // abierto el marcador» (F-01); nunca «Marcador abierto».
         container.installDemo(controller = controller, dialer = FakeEmergencyDialer(), storageDir = demoDir)
 
         launch.theme?.let { container.setTheme(it) }

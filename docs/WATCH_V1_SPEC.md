@@ -347,13 +347,13 @@ Cabecera compacta fija con «SOS» a la derecha. Contenido vertical:
 
 | Comando | En marcha | Pausado |
 |---|---|---|
-| `pause(now)` | → Pausado, `pausedAt = now`, `lastFix = nil` | error `alreadyPaused` (sin cambios) |
+| `pause(now)` | → Pausado, `pausedAt = now`, `lastFix = nil`, `altitudeRef = nil` | error `alreadyPaused` (sin cambios) |
 | `resume(now)` | error `notPaused` | → En marcha, `pausedSeconds += max(0, now − pausedAt)` |
 | `updateLocation` | distancia, movimiento, altitud, perfil, avisos | **sólo avisos POI**; nada de métricas |
 | `finish(now)` | normal | cierra la pausa en curso (`pausedSeconds += now − pausedAt`) y finaliza |
 
-Los pasos no se pausan (el sensor no se puede pausar): se muestran tal cual. `lastFix = nil` al pausar
-para que el tramo recorrido en pausa no se cuente al reanudar.
+Los pasos no se pausan (el sensor no se puede pausar): se muestran tal cual. `lastFix = nil` y
+`altitudeRef = nil` al pausar para que ni el tramo ni el desnivel recorridos en pausa se cuenten al reanudar.
 
 `SessionSummary` añade `movingSeconds`, `pausedSeconds`, `ascentMeters`, `descentMeters` (enteros, redondeo
 half-up) y `profile`. `stage_finished.payload` añade los cuatro enteros (nunca el perfil ni posiciones).
@@ -373,7 +373,7 @@ si `ref − alt ≥ 3` → `descent += ref − alt; ref = alt`. Altitud "antigua
 ## F. Perfil registrado (§5.4)
 
 Con cada altitud válida: si el perfil está vacío o `distance − último.d ≥ spacing` (inicial 50 m) se añade
-`{d, alt, gapBefore = (perfil no vacío y distance − último.d > 200 m)}`. Si supera `cap` (500) muestras: se
+`{d, alt, gapBefore = (perfil no vacío y distance − último.d > max(200 m, 2·spacing))}`. Si supera `cap` (500) muestras: se
 conservan las de índice par, el `gapBefore` de una descartada pasa a la siguiente conservada, y `spacing *= 2`.
 
 ## G. Unidades e idioma (§8.2)
@@ -398,8 +398,8 @@ watchOS: WidgetKit (ya existe). Wear OS: `ComplicationDataSourceService` (androi
 
 Título «Accede desde tu esfera», texto «Abre Camino Seguro con un toque.», acciones «Cómo añadirlo» / «Ahora no».
 Se muestra una vez, sin trayecto activo, tras la configuración inicial; se aplaza si hay trayecto o si se está
-recuperando uno. Al descartarlo (o al abrir "Cómo añadirlo") se guarda localmente y no se repite. Cerrar la app
-con el aviso abierto = no decidido (se volverá a ofrecer). No afirma que la complicación esté instalada.
+recuperando uno. Al descartarlo («Ahora no» o el gesto del sistema para cerrar/volver) o al abrir "Cómo añadirlo"
+se guarda localmente y no se repite. Sólo si el proceso termina con el aviso abierto queda no decidido (se volverá a ofrecer). No afirma que la complicación esté instalada.
 Ruta permanente: **Ajustes → Acceso desde la esfera → Cómo añadirlo** (instrucciones manuales de la plataforma;
 no hay API pública verificada para abrir el editor de esfera desde una app de reloj).
 

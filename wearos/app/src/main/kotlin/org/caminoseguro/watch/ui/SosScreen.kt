@@ -58,6 +58,12 @@ fun SosScreen(state: SosViewState, onDial: () -> Unit, onBack: () -> Unit) {
         ) {
             item { ListHeader { Text(stringResource(R.string.sos_title)) } }
 
+            // F-01: marcador simulado (escenario DEMO de Debug). Marca visible antes del botón.
+            demoBadge(state.simulated)
+            if (state.simulated) {
+                item { CenteredText(stringResource(R.string.sos_demo_notice), style = MaterialTheme.typography.caption1) }
+            }
+
             // Acción principal: «Llamar al 112» / «Marcar 112». Nunca deshabilitada.
             item {
                 val label = when (state.actionLabel) {
@@ -86,6 +92,7 @@ fun SosScreen(state: SosViewState, onDial: () -> Unit, onBack: () -> Unit) {
                         SosOutcomeMessage.DIALER_OPENED -> stringResource(R.string.sos_result_dialer_opened)
                         SosOutcomeMessage.NO_DIALER -> stringResource(R.string.sos_result_no_dialer)
                         SosOutcomeMessage.FAILED -> stringResource(R.string.sos_result_failed)
+                        SosOutcomeMessage.SIMULATED -> stringResource(R.string.sos_result_simulated)
                     }
                     Text(
                         text = text,

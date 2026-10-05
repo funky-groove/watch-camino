@@ -17,14 +17,42 @@ class SosPresentationTest {
     private val lte = TelephonyCapability(hasTelephony = true, hasCallingFeature = true)
     private val bluetoothOnly = TelephonyCapability(hasTelephony = false, hasCallingFeature = false)
 
+    /** Marcador «real» de test: entrega al sistema y no es simulado. */
+    private class SystemLikeDialer : EmergencyDialer {
+        val requests = mutableListOf<EmergencyNumber>()
+        override fun requestDial(number: EmergencyNumber): DialResult {
+            requests += number
+            return DialResult.HandedToSystem
+        }
+    }
+
     @Test
     fun handedToSystemSaysDialerOpenedNeverCallPlaced() {
-        val dialer = FakeEmergencyDialer(DialResult.HandedToSystem)
+        val dialer = SystemLikeDialer()
         val sos = SosController(dialer)
+        assertFalse(sos.isSimulated)
         assertNull(SosPresentation.outcome(sos.lastResult.value))
         assertEquals(DialResult.HandedToSystem, sos.dial())
         assertEquals(listOf(EmergencyNumber.SPAIN_EU), dialer.requests)
         assertEquals(SosOutcomeMessage.DIALER_OPENED, SosPresentation.outcome(sos.lastResult.value))
+    }
+
+    /** F-01: con el marcador simulado (DEMO) nunca se dice «Marcador abierto». */
+    @Test
+    fun fakeDialerIsReportedAsSimulatedNeverAsOpened() {
+        val dialer = FakeEmergencyDialer(DialResult.HandedToSystem)
+        val sos = SosController(dialer)
+        assertTrue(sos.isSimulated)
+        assertEquals(DialResult.Simulated, sos.dial())
+        assertEquals(listOf(EmergencyNumber.SPAIN_EU), dialer.requests)
+        val state = SosPresentation.state(sos.number, lte, sos.lastResult.value, noLocation, simulated = sos.isSimulated)
+        assertTrue(state.simulated)
+        assertEquals(SosOutcomeMessage.SIMULATED, state.outcome)
+        // Aunque llegue un HandedToSystem crudo, el estado simulado no lo presenta como abierto.
+        assertEquals(
+            SosOutcomeMessage.SIMULATED,
+            SosPresentation.state(sos.number, lte, DialResult.HandedToSystem, noLocation, simulated = true).outcome,
+        )
     }
 
     @Test
@@ -58,7 +86,7 @@ class SosPresentationTest {
 
     @Test
     fun withoutTelephonyTheAttemptIsStillMade() {
-        val dialer = FakeEmergencyDialer(DialResult.HandedToSystem)
+        val dialer = SystemLikeDialer()
         val sos = SosController(dialer)
         val before = SosPresentation.state(sos.number, bluetoothOnly, sos.lastResult.value, noLocation)
         assertTrue("nunca se bloquea el intento", before.actionEnabled)
@@ -84,13 +112,13 @@ class SosPresentationTest {
 
     @Test
     fun outcomesNeverClaimHelpIsComing() {
-        // Los mensajes posibles son exactamente estos tres; ninguno afirma que se haya llamado,
+        // Los mensajes posibles son exactamente estos cuatro; ninguno afirma que se haya llamado,
         // enviado una emergencia ni que llegue ayuda (los textos se comprueban en AppResourcesTest).
         assertEquals(
-            setOf("DIALER_OPENED", "NO_DIALER", "FAILED"),
+            setOf("DIALER_OPENED", "NO_DIALER", "FAILED", "SIMULATED"),
             SosOutcomeMessage.entries.map { it.name }.toSet(),
         )
-        val results = listOf(DialResult.HandedToSystem, DialResult.NoDialer, DialResult.Failed)
+        val results = listOf(DialResult.HandedToSystem, DialResult.NoDialer, DialResult.Failed, DialResult.Simulated)
         assertEquals(SosOutcomeMessage.entries.toSet(), results.mapNotNull { SosPresentation.outcome(it) }.toSet())
     }
 }

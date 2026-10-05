@@ -314,6 +314,7 @@ def trip_metrics(events, profile_cap=500):
                 continue
             st["paused"], st["pausedAt"] = True, e["t"]
             last = None
+            st["altRef"] = None  # el desnivel recorrido en pausa no se cuenta al reanudar
             continue
         if kind == "resume":
             if not st["paused"]:
@@ -357,7 +358,9 @@ def trip_metrics(events, profile_cap=500):
         # perfil (§5.4)
         dist = st["distance"]
         if not profile or dist - profile[-1]["d"] >= spacing:
-            gap = bool(profile) and dist - profile[-1]["d"] > PROFILE_GAP_M
+            # El umbral de hueco crece con el espaciado: tras recortar, 2 muestras seguidas
+            # pueden estar a `spacing` de distancia sin que falten datos.
+            gap = bool(profile) and dist - profile[-1]["d"] > max(PROFILE_GAP_M, 2 * spacing)
             profile.append({"d": round(dist, 4), "alt": alt, "gapBefore": gap})
             if len(profile) > profile_cap:
                 kept = []
@@ -427,6 +430,14 @@ def gen_trip():
     out = []
     for name, events in cases.items():
         out.append({"name": name, "profileCap": 500, "events": events, "expected": trip_metrics(events)})
+    climb_in_pause = walk(0, 4, 14, 10, alt=300, vacc=5) + [{"type": "pause", "t": 40}] \
+        + walk(60, 3, 14, 10, t0=50, alt=350, vacc=5) + [{"type": "resume", "t": 400}] \
+        + walk(400, 4, 14, 10, t0=410, alt=700, alt_step=1.0, vacc=5)
+    out.append({"name": "subida_en_pausa_no_cuenta", "profileCap": 500, "events": climb_in_pause,
+                "expected": trip_metrics(climb_in_pause)})
+    long_walk = walk(0, 400, 50, 40, alt=500, alt_step=0.0)
+    out.append({"name": "perfil_largo_recortado_sin_huecos_falsos", "profileCap": 8, "events": long_walk,
+                "expected": trip_metrics(long_walk, profile_cap=8)})
     capped = walk(0, 60, 14, 10, alt=200, alt_step=0.2)
     out.append({"name": "perfil_recortado_a_8", "profileCap": 8, "events": capped,
                 "expected": trip_metrics(capped, profile_cap=8)})

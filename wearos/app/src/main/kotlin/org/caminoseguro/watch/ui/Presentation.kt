@@ -98,21 +98,24 @@ object Presentation {
         val stage = stages.firstOrNull { it.id == session.stageId }
         val remaining = if (stage != null) CaminoStats.remainingMeters(stage, session) else 0.0
         val next = latestFix?.let { PoiAlertEngine.nearestUnalerted(pois, session.alertedPoiIds, it.point) }
+        val elapsed = StageMachine.activeSeconds(session.startedAt, now).toLong()
         return ActiveStageUi(
             stageId = session.stageId,
             stageName = stage?.name ?: session.stageId,
             remainingMeters = remaining,
             walkedMeters = session.distanceMeters,
             steps = session.steps,
-            elapsedSeconds = StageMachine.activeSeconds(session.startedAt, now).toLong(),
+            elapsedSeconds = elapsed,
             nextPoi = next,
             hasFix = latestFix != null,
             figures = TripFigures.of(session, stage, now, locationAvailable, stepsAvailable),
             paused = session.isPaused,
-            movingSeconds = session.movingSeconds.toLong(),
+            // Igual que el resumen: tiempo en movimiento ≤ duración (p. ej. reloj del sistema hacia atrás).
+            movingSeconds = minOf(session.movingSeconds.toLong(), elapsed).coerceAtLeast(0),
             altitude = session.altitude,
             altitudeStale = session.isAltitudeStale(now),
-            hasAltitudeData = session.altitudeRef != null,
+            // `altitudeRef` se borra al pausar (§C); `altitude` conserva la última válida.
+            hasAltitudeData = session.altitude != null,
             ascentMeters = session.ascentMeters,
             descentMeters = session.descentMeters,
             profile = session.profile,

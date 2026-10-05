@@ -88,8 +88,11 @@ enum WidgetBridge {
             startedAt: session.startedAt,
             walkedMeters: session.distanceMeters,
             plannedMeters: planned,
-            // En pausa no hay ancla de distancia (`lastFix = nil`), pero no es falta de GPS.
-            hasFix: session.lastFix != nil || session.isPaused,
+            // Hubo al menos un fix válido en este trayecto: ancla actual, último fix preciso
+            // recibido (se conserva en pausa) o distancia ya recorrida antes de una pausa
+            // restaurada. Sin ninguno, la esfera dice «Sin GPS» y no «0 km» (F-08).
+            hasFix: session.lastFix != nil || model.lastFix != nil
+                || (session.isPaused && session.distanceMeters > 0),
             isDemo: model.isDemo,
             updatedAt: now,
             lastStageName: lastName,

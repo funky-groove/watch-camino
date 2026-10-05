@@ -206,6 +206,16 @@ public struct StageSession: Codable, Equatable, Sendable {
     /// Separación mínima actual entre muestras del perfil (se duplica al recortar).
     public var profileSpacing: Double
 
+    /// Tiempo en movimiento para mostrar EN VIVO: `min(movingSeconds, now − startedAt)`, igual
+    /// que el resumen acota con la duración (§D). Con el reloj hacia atrás (`now < startedAt`)
+    /// devuelve 0: nunca «tiempo en movimiento > duración».
+    public func liveMovingSeconds(at now: Date) -> Double {
+        let elapsed = now.timeIntervalSince(startedAt)
+        let bound = (elapsed.isFinite && elapsed > 0) ? elapsed : 0
+        let moving = movingSeconds.isFinite ? max(0, movingSeconds) : 0
+        return min(moving, bound)
+    }
+
     public init(
         sessionId: String,
         stageId: String,

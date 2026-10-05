@@ -52,10 +52,12 @@ struct StatsView: View {
                     )
                 }
             }
+            // F-06: acotado por la duración, como en el resumen.
+            let moving = model.liveMovingSeconds(session)
             MetricView(
                 label: L10n.tripMovingTime,
-                value: display.duration(interval: session.movingSeconds),
-                spokenValue: Spoken.duration(interval: session.movingSeconds)
+                value: display.duration(interval: moving),
+                spokenValue: Spoken.duration(interval: moving)
             )
             StatLinkRow(metric: .steps) {
                 MetricView(

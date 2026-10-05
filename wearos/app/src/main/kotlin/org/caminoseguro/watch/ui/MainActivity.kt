@@ -30,14 +30,43 @@ class MainActivity : ComponentActivity() {
                 Log.w(TAG, "Escenario de demostración no aplicado: ${e.javaClass.simpleName}")
             }
         }
+        // F-05: antes de crear el NavHost (que resuelve los deep links del Intent de la actividad).
+        dropExternalDeepLinks(intent)
         handleIntent(intent)
         setContent { CaminoApp(viewModel) }
     }
 
     override fun onNewIntent(intent: Intent) {
+        dropExternalDeepLinks(intent)
         super.onNewIntent(intent)
         setIntent(intent)
         handleIntent(intent)
+    }
+
+    /**
+     * F-05: la actividad está exportada (launcher) y Navigation registra un deep link implícito
+     * `android-app://androidx.navigation/<ruta>` por cada `composable(route)`. Sin este filtro
+     * cualquier app instalada podría abrir directamente `sos`, `confirm_finish`, `place/{id}`…
+     * La app no usa deep links propios: los únicos lanzamientos legítimos son el launcher y la
+     * complicación (`ACTION_OPEN_TRIP`, sin `data`). Por eso se descarta todo `data` (y los
+     * extras de deep link explícito de NavController) salvo la URI exacta que haya puesto el
+     * instalador de escenarios de Debug ([DemoHooks.allowedNavUri], null en Release).
+     */
+    private fun dropExternalDeepLinks(intent: Intent?) {
+        if (intent == null) return
+        try {
+            val data = intent.dataString
+            if (data != null && data != DemoHooks.allowedNavUri) {
+                if (intent.data?.scheme == NAV_SCHEME) Log.w(TAG, "Deep link de navegación externo descartado")
+                intent.data = null
+            }
+            for (key in NAV_DEEP_LINK_EXTRAS) intent.removeExtra(key)
+        } catch (e: RuntimeException) {
+            // Extras malformados (BadParcelableException…): se descartan todos.
+            Log.w(TAG, "Intent con extras ilegibles: ${e.javaClass.simpleName}")
+            intent.data = null
+            intent.replaceExtras(null as android.os.Bundle?)
+        }
     }
 
     /** Toque en la complicación: abre Trayecto (inicio o estadísticas). Nunca inicia nada. */
@@ -57,5 +86,14 @@ class MainActivity : ComponentActivity() {
 
     private companion object {
         const val TAG = "CaminoMain"
+        const val NAV_SCHEME = "android-app"
+
+        /** Claves de `NavController.KEY_DEEP_LINK_*` (deep link explícito por ids de destino). */
+        val NAV_DEEP_LINK_EXTRAS = listOf(
+            "android-support-nav:controller:deepLinkIds",
+            "android-support-nav:controller:deepLinkArgs",
+            "android-support-nav:controller:deepLinkExtras",
+            "android-support-nav:controller:deepLinkIntent",
+        )
     }
 }

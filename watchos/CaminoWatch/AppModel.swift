@@ -157,6 +157,11 @@ final class AppModel: ObservableObject {
         return controller.elapsedSeconds(at: date)
     }
 
+    /// Tiempo en movimiento en vivo acotado por la duración (F-06, §D).
+    func liveMovingSeconds(_ session: StageSession, at date: Date? = nil) -> Double {
+        return session.liveMovingSeconds(at: date ?? controller.now())
+    }
+
     /// POI no avisado más cercano al último fix, si hay fix.
     var nextPoi: PoiAlert? {
         guard let fix = lastFix else {
@@ -420,6 +425,10 @@ final class AppModel: ObservableObject {
             errorMessage = nil
             finishedSummary = summary
             Log.app.info("Etapa finalizada")
+        } catch ControllerError.storageFailed {
+            // F-07: no se guardó → el trayecto sigue activo (nada encolado); se puede reintentar.
+            errorMessage = L10n.errorFinishNotSaved
+            Log.app.error("No se pudo guardar al finalizar; el trayecto sigue activo")
         } catch {
             errorMessage = L10n.errorFinish
             Log.app.error("No se pudo finalizar la etapa: \(Log.describe(error), privacy: .public)")

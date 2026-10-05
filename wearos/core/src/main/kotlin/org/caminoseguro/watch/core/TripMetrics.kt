@@ -19,10 +19,13 @@ object TripMetrics {
     /** Altitud "antigua" si `now − altitudeAt > 300 s`. */
     const val ALTITUDE_STALE_S: Double = 300.0
 
-    /** → Pausado (`pausedAt = now`, `lastFix = null`). Null si ya estaba en pausa (`alreadyPaused`). */
+    /**
+     * → Pausado (`pausedAt = now`, `lastFix = null`, `altitudeRef = null`): ni el tramo ni el desnivel
+     * recorridos en pausa se cuentan al reanudar. Null si ya estaba en pausa (`alreadyPaused`).
+     */
     fun pause(session: StageSession, now: Instant): StageSession? {
         if (session.isPaused) return null
-        return session.copy(pausedAt = now, lastFix = null)
+        return session.copy(pausedAt = now, lastFix = null, altitudeRef = null)
     }
 
     /** → En marcha (`pausedSeconds += max(0, now − pausedAt)`). Null si no estaba en pausa (`notPaused`). */
@@ -102,7 +105,9 @@ object TripMetrics {
     ): Pair<List<ProfileSample>, Double> {
         val last = profile.lastOrNull()
         if (last != null && distance - last.d < spacing) return profile to spacing
-        val gap = last != null && distance - last.d > PROFILE_GAP_M
+        // El umbral crece con el espaciado: tras recortar, dos muestras seguidas pueden distar
+        // `spacing` sin que falten datos (§F: `> max(200 m, 2·spacing)`).
+        val gap = last != null && distance - last.d > maxOf(PROFILE_GAP_M, 2 * spacing)
         val grown = profile + ProfileSample(d = distance, alt = alt, gapBefore = gap)
         if (grown.size <= cap) return grown to spacing
         val kept = ArrayList<ProfileSample>(grown.size / 2 + 1)

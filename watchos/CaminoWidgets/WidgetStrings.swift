@@ -19,6 +19,8 @@ enum WidgetStrings {
     static var openApp: String { tr("widget.open", "Abre Camino Seguro") }
     static var open: String { tr("widget.open.short", "Abrir") }
     static var noGps: String { tr("widget.nogps", "Sin GPS") }
+    /// Rótulo corto bajo el icono en la complicación circular sin fix.
+    static var gpsShort: String { tr("widget.gps.short", "GPS") }
     static var elapsedA11y: String { tr("widget.elapsed.a11y", "Tiempo") }
     // V1.1 §H
     static var start: String { tr("widget.start", "Iniciar trayecto") }

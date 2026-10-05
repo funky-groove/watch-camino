@@ -52,6 +52,12 @@ sealed interface DialResult {
 
     /** Cualquier otro fallo (p. ej. `SecurityException`, número inválido). */
     data object Failed : DialResult
+
+    /**
+     * Marcador simulado (escenarios DEMO de Debug): NO se ha abierto nada. La UI lo dice tal cual
+     * («Simulado: no se ha abierto el marcador»); nunca «Marcador abierto».
+     */
+    data object Simulated : DialResult
 }
 
 /**
@@ -60,13 +66,22 @@ sealed interface DialResult {
  */
 fun interface EmergencyDialer {
     fun requestDial(number: EmergencyNumber): DialResult
+
+    /** `true` si este marcador no abre nada (simulado): la pantalla SOS muestra la marca DEMO. */
+    val isSimulated: Boolean get() = false
 }
 
-/** Marcador simulado: registra las peticiones y NO abre nada. */
+/**
+ * Marcador simulado: registra las peticiones y NO abre nada. [isSimulated] es siempre `true`:
+ * [SosController] convierte su `HandedToSystem` en [DialResult.Simulated] para que la pantalla no
+ * diga nunca «Marcador abierto» cuando no se ha abierto.
+ */
 class FakeEmergencyDialer(
     /** Resultado que devolverá (por defecto, entregado al sistema). */
     var nextResult: DialResult = DialResult.HandedToSystem,
 ) : EmergencyDialer {
+    override val isSimulated: Boolean get() = true
+
     private val _requests = mutableListOf<EmergencyNumber>()
     val requests: List<EmergencyNumber> get() = _requests.toList()
 

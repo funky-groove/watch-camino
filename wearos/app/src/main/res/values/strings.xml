@@ -161,6 +161,8 @@
     <string name="sos_result_dialer_opened">Marcador abierto con el 112. Pulsa llamar si es seguro.</string>
     <string name="sos_result_no_dialer">Este reloj no ha abierto el marcador. Usa el SOS del reloj (varía según el fabricante) o llama al 112 desde tu móvil.</string>
     <string name="sos_result_failed">No se pudo abrir el marcador. Usa el SOS del reloj (varía según el fabricante) o llama al 112 desde tu móvil.</string>
+    <string name="sos_result_simulated">Simulado: no se ha abierto el marcador.</string>
+    <string name="sos_demo_notice">Modo demostración: no se abre ninguna llamada.</string>
     <string name="sos_scope">112: España y UE</string>
     <string name="sos_location_section">Tu ubicación</string>
     <string name="sos_location_current">Ubicación actual</string>
@@ -265,6 +267,7 @@
     <string name="summary_avg_pace">Ritmo medio</string>
     <string name="summary_avg_speed">Velocidad media</string>
     <string name="summary_saved_watch">Guardado en el reloj</string>
+    <string name="summary_saved_memory_demo">Demo: guardado sólo en memoria</string>
     <string name="summary_sync_blocked">Envío no disponible (sin servidor)</string>
     <string name="summary_sync_demo">Envío simulado (demo)</string>
     <string name="summary_sync_pending">Pendiente de envío</string>
@@ -306,4 +309,6 @@
     <string name="complication_long_trip">%1$s · %2$s</string>
     <string name="complication_idle_a11y">Camino Seguro: iniciar trayecto</string>
     <string name="complication_trip_a11y">Camino Seguro: %1$s, %2$s</string>
+    <string name="complication_no_gps">sin GPS</string>
+    <string name="complication_no_gps_a11y">sin ubicación GPS</string>
 </resources>

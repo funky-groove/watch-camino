@@ -5,7 +5,7 @@ import WidgetKit
 
 // Complicación / widget "Trayecto" (watchOS 10+). Ver CaminoWidgets/README.md.
 // Las complicaciones no se pueden capturar con simctl: se verifican con los #Preview de
-// abajo en Xcode (activo, pausado en millas, datos antiguos, sin trayecto, sin datos).
+// abajo en Xcode (activo, pausado en millas, sin GPS, datos antiguos, sin trayecto, sin datos).
 //
 // Fuente de datos: `WidgetSnapshot` (Shared/WidgetSnapshot.swift) que escribe la app en el
 // App Group. Nunca contiene coordenadas. Sin datos → "Abre Camino Seguro".
@@ -116,10 +116,27 @@ private struct CircularView: View {
     let tint: Color?
 
     var body: some View {
-        if let snapshot = snapshot, snapshot.isActive {
+        if let snapshot = snapshot, snapshot.awaitingFirstFix {
+            // Sin ningún fix: «Sin GPS», nunca «0 km» (F-08). DEMO visible si es demo.
+            ZStack {
+                AccessoryWidgetBackground()
+                VStack(spacing: 0) {
+                    Image(systemName: "location.slash")
+                        .font(.body)
+                        .widgetAccentable()
+                    Text(snapshot.isDemo ? WidgetStrings.demo : WidgetStrings.gpsShort)
+                        .font(.footnote.weight(.semibold))
+                }
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(WidgetFormat.fullLabel(snapshot, now: now))
+        } else if let snapshot = snapshot, snapshot.isActive {
             let parts = WidgetFormat.distanceParts(snapshot.walkedMeters, snapshot)
             Gauge(value: snapshot.progress, in: 0...1) {
-                if snapshot.isPaused {
+                if snapshot.isPaused && snapshot.isDemo {
+                    // DEMO siempre visible, también en pausa.
+                    Text(Image(systemName: "pause.fill")) + Text(WidgetStrings.demo)
+                } else if snapshot.isPaused {
                     Image(systemName: "pause.fill")
                 } else {
                     Text(snapshot.isDemo ? WidgetStrings.demo : parts.unit)
@@ -152,7 +169,17 @@ private struct CornerView: View {
     let tint: Color?
 
     var body: some View {
-        if let snapshot = snapshot, snapshot.isActive {
+        if let snapshot = snapshot, snapshot.awaitingFirstFix {
+            // Sin ningún fix: «Sin GPS», nunca «0 km» (F-08).
+            Image(systemName: "location.slash")
+                .font(.title3)
+                .widgetAccentable()
+                .widgetLabel {
+                    Text(WidgetFormat.statusWithoutDistance(snapshot, now: now))
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(WidgetFormat.fullLabel(snapshot, now: now))
+        } else if let snapshot = snapshot, snapshot.isActive {
             let parts = WidgetFormat.distanceParts(snapshot.walkedMeters, snapshot)
             Text(parts.number)
                 .font(.title3.monospacedDigit())
@@ -183,7 +210,10 @@ private struct InlineView: View {
     let now: Date
 
     var body: some View {
-        if let snapshot = snapshot, snapshot.isActive {
+        if let snapshot = snapshot, snapshot.awaitingFirstFix {
+            // «DEMO · Sin GPS · en marcha»: nunca «0 km» sin fix (F-08).
+            Text(WidgetFormat.statusWithoutDistance(snapshot, now: now))
+        } else if let snapshot = snapshot, snapshot.isActive {
             let prefix = snapshot.isDemo ? WidgetStrings.demo + " · " : ""
             Text(prefix + WidgetFormat.distance(snapshot.walkedMeters, snapshot) + " · "
                 + WidgetFormat.statusOrAge(snapshot, now: now))
@@ -205,7 +235,8 @@ private struct RectangularView: View {
             if let snapshot = snapshot, let startedAt = snapshot.startedAt {
                 header(snapshot.stageName ?? WidgetStrings.displayName, isDemo: snapshot.isDemo)
                 HStack(spacing: 4) {
-                    Text(WidgetFormat.distanceLine(snapshot))
+                    // Sin ningún fix: «Sin GPS» en lugar de «0 km de 22 km» (F-08).
+                    Text(snapshot.awaitingFirstFix ? WidgetStrings.noGps : WidgetFormat.distanceLine(snapshot))
                         .font(.headline.monospacedDigit())
                         .widgetAccentable()
                     if !snapshot.hasFix {
@@ -369,7 +400,9 @@ enum WidgetFormat {
     static func fullLabel(_ snapshot: WidgetSnapshot, now: Date) -> String {
         let walked = distance(snapshot.walkedMeters, snapshot)
         var text: String
-        if snapshot.plannedMeters > 0 {
+        if snapshot.awaitingFirstFix {
+            text = WidgetStrings.noGps
+        } else if snapshot.plannedMeters > 0 {
             text = WidgetStrings.progressA11y(walked: walked, planned: distance(snapshot.plannedMeters, snapshot))
         } else {
             text = walked
@@ -380,6 +413,15 @@ enum WidgetFormat {
         }
         if snapshot.isDemo {
             text += ". " + WidgetStrings.demoA11y
+        }
+        return text
+    }
+
+    /// Sin ningún fix: "DEMO · Sin GPS · en marcha" (o "· pausado" / "· hace 20 min").
+    static func statusWithoutDistance(_ snapshot: WidgetSnapshot, now: Date) -> String {
+        var text = WidgetStrings.noGps + " · " + statusOrAge(snapshot, now: now)
+        if snapshot.isDemo {
+            text = WidgetStrings.demo + " · " + text
         }
         return text
     }
@@ -442,6 +484,20 @@ extension WidgetSnapshot {
         )
     }
 
+    /// Demostración: etapa recién iniciada sin ningún fix → «Sin GPS», no «0 km».
+    static var demoNoFix: WidgetSnapshot {
+        let now = Date()
+        return WidgetSnapshot(
+            stageName: "Sarria – Portomarín",
+            startedAt: now.addingTimeInterval(-(2 * 60)),
+            walkedMeters: 0,
+            plannedMeters: 22_000,
+            hasFix: false,
+            isDemo: true,
+            updatedAt: now
+        )
+    }
+
     /// Demostración: sin etapa, con la última terminada.
     static var demoIdle: WidgetSnapshot {
         return WidgetSnapshot(
@@ -467,6 +523,7 @@ extension WidgetSnapshot {
 } timeline: {
     CaminoEntry(date: .now, snapshot: .demoActive)
     CaminoEntry(date: .now, snapshot: .demoPausedImperial)
+    CaminoEntry(date: .now, snapshot: .demoNoFix)
     CaminoEntry(date: .now, snapshot: .demoStale)
     CaminoEntry(date: .now, snapshot: .demoIdle)
     CaminoEntry(date: .now, snapshot: nil)
@@ -477,6 +534,7 @@ extension WidgetSnapshot {
 } timeline: {
     CaminoEntry(date: .now, snapshot: .demoActive)
     CaminoEntry(date: .now, snapshot: .demoPausedImperial)
+    CaminoEntry(date: .now, snapshot: .demoNoFix)
     CaminoEntry(date: .now, snapshot: .demoIdle)
 }
 
@@ -485,6 +543,7 @@ extension WidgetSnapshot {
 } timeline: {
     CaminoEntry(date: .now, snapshot: .demoActive)
     CaminoEntry(date: .now, snapshot: .demoPausedImperial)
+    CaminoEntry(date: .now, snapshot: .demoNoFix)
     CaminoEntry(date: .now, snapshot: .demoStale)
     CaminoEntry(date: .now, snapshot: .demoIdle)
     CaminoEntry(date: .now, snapshot: nil)
@@ -495,6 +554,7 @@ extension WidgetSnapshot {
 } timeline: {
     CaminoEntry(date: .now, snapshot: .demoActive)
     CaminoEntry(date: .now, snapshot: .demoPausedImperial)
+    CaminoEntry(date: .now, snapshot: .demoNoFix)
     CaminoEntry(date: .now, snapshot: .demoIdle)
 }
 #endif

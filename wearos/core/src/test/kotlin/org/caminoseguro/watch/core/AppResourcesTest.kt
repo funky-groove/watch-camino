@@ -79,6 +79,7 @@ class AppResourcesTest {
         }
         val es = strings(esFile)
         assertEquals("Marcador abierto con el 112. Pulsa llamar si es seguro.", es["sos_result_dialer_opened"])
+        assertEquals("Simulado: no se ha abierto el marcador.", es["sos_result_simulated"])
         assertEquals("112: España y UE", es["sos_scope"])
         assertEquals("Estas coordenadas no se envían al 112 automáticamente.", es["sos_location_not_sent"])
         assertTrue(es.getValue("sos_native_help").contains("Varía según el fabricante"))

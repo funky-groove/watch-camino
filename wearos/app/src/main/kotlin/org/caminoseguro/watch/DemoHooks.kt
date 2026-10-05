@@ -14,4 +14,13 @@ package org.caminoseguro.watch
 object DemoHooks {
     @Volatile
     var apply: ((AppContainer) -> Unit)? = null
+
+    /**
+     * Única URI de navegación que `MainActivity` acepta en su Intent (F-05): la que el instalador
+     * de escenarios Debug pone para abrir una ruta (`android-app://androidx.navigation/<ruta>`).
+     * Null en main/Release y en Debug sin escenario: entonces se descarta TODO `intent.data` y los
+     * extras de deep link de Navigation, venga de donde venga.
+     */
+    @Volatile
+    var allowedNavUri: String? = null
 }

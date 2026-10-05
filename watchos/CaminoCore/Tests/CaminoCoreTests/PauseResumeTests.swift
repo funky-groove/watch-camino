@@ -255,4 +255,26 @@ final class PauseResumeTests: XCTestCase {
         XCTAssertEqual(summary.activeSeconds, 100)
         XCTAssertFalse(controller.isPaused)
     }
+
+    /// F-06: en vivo, el tiempo en movimiento nunca supera la duración (reloj hacia atrás).
+    func testLiveMovingSecondsIsBoundedByElapsed() {
+        var session = StageSession(sessionId: "s", stageId: stage, startedAt: epoch(100))
+        session.movingSeconds = 20
+        XCTAssertEqual(session.liveMovingSeconds(at: epoch(90)), 0, "reloj hacia atrás: 0, no 20")
+        XCTAssertEqual(session.liveMovingSeconds(at: epoch(110)), 10)
+        XCTAssertEqual(session.liveMovingSeconds(at: epoch(200)), 20)
+    }
+
+    /// F-03: la subida hecha en pausa (bus, teleférico) no se suma al reanudar.
+    func testAscentDuringPauseIsNotCounted() throws {
+        var metrics = TripMetrics()
+        metrics.add(fix(0, 0, alt: 500, vacc: 5))
+        try metrics.pause(at: epoch(10))
+        XCTAssertNil(metrics.altitudeRef)
+        try metrics.resume(at: epoch(600))
+        metrics.add(fix(3_000, 610, alt: 900, vacc: 5))
+        metrics.add(fix(3_014, 620, alt: 901, vacc: 5))
+        XCTAssertEqual(metrics.ascentMeters, 0, accuracy: 1e-9)
+        XCTAssertEqual(metrics.descentMeters, 0, accuracy: 1e-9)
+    }
 }

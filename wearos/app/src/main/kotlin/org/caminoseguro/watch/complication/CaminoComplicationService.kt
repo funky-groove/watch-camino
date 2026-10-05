@@ -32,7 +32,8 @@ import org.caminoseguro.watch.ui.MainActivity
  *
  * - Tipos: SHORT_TEXT, LONG_TEXT, MONOCHROMATIC_IMAGE y RANGED_VALUE (progreso de la etapa).
  * - Sin trayecto: icono + «Iniciar trayecto» (LONG_TEXT) / icono + "Camino" (SHORT_TEXT).
- *   Con trayecto: distancia en las unidades del usuario + «en marcha» / «pausado».
+ *   Con trayecto: distancia en las unidades del usuario + «en marcha» / «pausado»; «sin GPS» si la
+ *   sesión aún no tiene ningún fix válido, y marca «DEMO» con el adaptador simulado (Debug).
  * - Datos: estado local persistido del controlador (fichero privado de la app), sin red.
  * - Tocar: `PendingIntent` INMUTABLE que abre [MainActivity] en Trayecto. Nunca inicia un trayecto
  *   ni una llamada.
@@ -51,7 +52,7 @@ class CaminoComplicationService : SuspendingComplicationDataSourceService() {
             val snapshot = controller.snapshot.value
             val stage = snapshot.activeSession?.let { controller.stage(it.stageId) }
             val format = DisplayFormat.of(container.displayPreferences.value, AppLocale.effective(this))
-            build(this, request.complicationType, ComplicationContent.of(snapshot, stage, format))
+            build(this, request.complicationType, ComplicationContent.of(snapshot, stage, format, demo = container.isDemo))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -107,19 +108,29 @@ class CaminoComplicationService : SuspendingComplicationDataSourceService() {
             val status = trip?.let {
                 context.getString(if (it.paused) R.string.complication_paused else R.string.complication_moving)
             }
+            // F-08: sin ningún fix válido «sin GPS» (no «0 km»); con datos DEMO, marca «DEMO».
+            val distance = trip?.let { if (it.noGps) context.getString(R.string.complication_no_gps) else it.distanceText }
+            val distanceSpoken = trip?.let {
+                if (it.noGps) context.getString(R.string.complication_no_gps_a11y) else it.distanceSpoken
+            }
+            val demo = trip?.demo == true
+            val demoLabel = context.getString(R.string.demo_badge)
             val description = text(
                 if (trip == null) {
                     context.getString(R.string.complication_idle_a11y)
                 } else {
-                    context.getString(R.string.complication_trip_a11y, trip.distanceSpoken, status)
+                    val spoken = context.getString(R.string.complication_trip_a11y, distanceSpoken, status)
+                    if (demo) "$demoLabel. $spoken" else spoken
                 },
             )
             return when (type) {
                 ComplicationType.SHORT_TEXT -> {
-                    val main = trip?.distanceText ?: context.getString(R.string.complication_short_idle)
+                    val main = distance ?: context.getString(R.string.complication_short_idle)
+                    // El título es corto: con DEMO, la marca tiene prioridad sobre el estado.
+                    val title = if (demo) demoLabel else status
                     ShortTextComplicationData.Builder(text(main), description)
                         .setMonochromaticImage(icon)
-                        .apply { if (status != null) setTitle(text(status)) }
+                        .apply { if (title != null) setTitle(text(title)) }
                         .setTapAction(tapAction)
                         .build()
                 }
@@ -127,11 +138,12 @@ class CaminoComplicationService : SuspendingComplicationDataSourceService() {
                     val main = if (trip == null) {
                         context.getString(R.string.action_start_trip)
                     } else {
-                        context.getString(R.string.complication_long_trip, trip.distanceText, status)
+                        context.getString(R.string.complication_long_trip, distance, status)
                     }
+                    val appName = context.getString(R.string.app_name)
                     LongTextComplicationData.Builder(text(main), description)
                         .setMonochromaticImage(icon)
-                        .setTitle(text(context.getString(R.string.app_name)))
+                        .setTitle(text(if (demo) "$demoLabel · $appName" else appName))
                         .setTapAction(tapAction)
                         .build()
                 }
@@ -143,7 +155,8 @@ class CaminoComplicationService : SuspendingComplicationDataSourceService() {
                     val value = trip?.progress ?: 0f
                     RangedValueComplicationData.Builder(value, 0f, 1f, description)
                         .setMonochromaticImage(icon)
-                        .setText(text(trip?.distanceText ?: context.getString(R.string.complication_short_idle)))
+                        .setText(text(distance ?: context.getString(R.string.complication_short_idle)))
+                        .apply { if (demo) setTitle(text(demoLabel)) }
                         .setTapAction(tapAction)
                         .build()
                 }

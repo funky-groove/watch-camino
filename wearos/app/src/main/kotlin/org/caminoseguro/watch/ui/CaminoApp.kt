@@ -107,7 +107,9 @@ fun CaminoApp(viewModel: CaminoViewModel) {
         // Aviso de primer uso «Accede desde tu esfera» (§I): una vez, desde Trayecto sin actividad.
         val offerFaceHint by viewModel.faceHintOffer.collectAsStateWithLifecycle()
         LaunchedEffect(offerFaceHint, currentRoute) {
-            if (offerFaceHint && currentRoute == Routes.HOME) {
+            // F-11: se comprueba también el destino real del NavController (un toque en «SOS» puede
+            // haber navegado antes de que `currentRoute` se actualice).
+            if (offerFaceHint && currentRoute == Routes.HOME && navController.currentDestination?.route == Routes.HOME) {
                 viewModel.markFaceHintOffered()
                 navController.navigate(Routes.FACE_HINT) { launchSingleTop = true }
             }
@@ -245,6 +247,20 @@ fun CaminoApp(viewModel: CaminoViewModel) {
                 )
             }
             composable(Routes.FACE_HINT) {
+                // F-10: salir con el gesto del sistema (deslizar/atrás) = «Ahora no» (persistido).
+                // Sólo si la entrada ya no está en la pila: recrear la actividad (idioma, giro) no
+                // decide nada, y matar la app con el aviso abierto lo deja sin decidir.
+                DisposableEffect(Unit) {
+                    onDispose {
+                        val stillInStack = try {
+                            navController.getBackStackEntry(Routes.FACE_HINT)
+                            true
+                        } catch (e: IllegalArgumentException) {
+                            false
+                        }
+                        if (!stillInStack) viewModel.dismissFaceHintIfUndecided()
+                    }
+                }
                 FaceHintScreen(
                     onHow = {
                         viewModel.faceHintHelpOpened()

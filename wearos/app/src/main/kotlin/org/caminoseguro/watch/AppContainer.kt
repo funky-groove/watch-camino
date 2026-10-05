@@ -93,6 +93,13 @@ class AppContainer(private val app: Application) {
     /** Todos los lugares de demostración (Lugares sin trayecto). */
     val allPois: List<Poi> get() = poiSource.allPois()
 
+    /**
+     * `false` cuando un escenario DEMO ([installDemo]) usa almacenes en memoria: el resumen no dice
+     * entonces «Guardado en el reloj» (F-09).
+     */
+    @Volatile var sessionPersisted: Boolean = true
+        private set
+
     /** Controlador del trayecto. Sólo [installDemo] (escenarios Debug) lo sustituye. */
     var controller: CaminoController = CaminoController(
         catalog = FixtureStageCatalog(readAsset("stages.json")),
@@ -200,9 +207,11 @@ class AppContainer(private val app: Application) {
     // ---------------------------------------------------------------- SOS (sin sesión ni backend)
 
     /**
-     * Marcador real (`ACTION_DIAL`) en TODAS las variantes, también Debug/DEMO: un SOS que no abre
-     * el marcador en una build instalada en un reloj sería peligroso. `FakeEmergencyDialer` (core)
-     * queda para tests JVM y capturas.
+     * Marcador real (`ACTION_DIAL`) en Release y en Debug normal (sin escenario). SÓLO los
+     * escenarios DEMO de Debug ([installDemo], lanzados con el extra `demo.scenario`) lo sustituyen
+     * por `FakeEmergencyDialer`, que no abre nada: entonces la pantalla SOS muestra la marca DEMO y
+     * «Simulado: no se ha abierto el marcador» (`EmergencyDialer.isSimulated`), nunca «Marcador
+     * abierto». Los tests JVM también usan el simulado.
      */
     var emergencyDialer: EmergencyDialer = SystemEmergencyDialer(app)
         private set
@@ -308,7 +317,8 @@ class AppContainer(private val app: Application) {
      * ViewModel (p. ej. en `onActivityPreCreated` o desde `DemoHooks.apply`, que `MainActivity`
      * llama antes de `setContent`):
      * - sustituye el controlador (p. ej. uno con almacenes en memoria y reloj desplazable);
-     * - sustituye el marcador de emergencia (p. ej. `FakeEmergencyDialer`: SOS no abre nada) y el SOS;
+     * - sustituye el marcador de emergencia (p. ej. `FakeEmergencyDialer`: SOS no abre nada y la
+     *   pantalla lo marca DEMO/«Simulado») y el SOS;
      * - mueve TODOS los almacenes de preferencias (tema, avisos, unidades, aviso de esfera) a
      *   [storageDir], para no escribir nunca en el almacenamiento real del usuario;
      * - deja las preferencias en memoria en sus valores iniciales (Negro, todas las categorías,
@@ -335,6 +345,7 @@ class AppContainer(private val app: Application) {
         emergencyDialer = dialer
         sos = SosController(dialer)
         controller.alertCategories = PoiCategory.entries.toSet()
+        sessionPersisted = false
         this.controller = controller
     }
 

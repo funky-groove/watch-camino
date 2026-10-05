@@ -267,10 +267,10 @@ final class CaminoControllerTests: XCTestCase {
         XCTAssertEqual(demo.status, .synced)
     }
 
-    /// V-04: si falla el guardado de la sesión al finalizar y, tras relanzar, se vuelve a
-    /// finalizar la misma sesión, no se duplica `stage_finished`.
+    /// V-04 / F-07: si falla el guardado al finalizar, el controlador NO pasa a Idle ni encola
+    /// `stage_finished`: revierte al estado previo y lanza un error recuperable.
     @MainActor
-    func testFinishWithFailedSaveDoesNotDuplicateStageFinished() async throws {
+    func testFinishWithFailedSaveKeepsSessionActiveAndEnqueuesNothing() async throws {
         let env = try makeEnv()
         let store = FlakySessionStore()
         func make() -> CaminoController {
@@ -287,21 +287,70 @@ final class CaminoControllerTests: XCTestCase {
             )
         }
         let controller = make()
+        var storageErrors = 0
+        controller.onStorageError = { _ in storageErrors += 1 }
         let session = try controller.start(stageId: "cf-sarria-portomarin")
-        store.failSaves = true
-        try controller.finish()
-        store.failSaves = false
+        try controller.pause()
+        let stateBefore = controller.state
+        let historyBefore = controller.history
+        let queueBefore = env.syncStore.value?.queue ?? []
+        env.clock.advance(by: 30)
 
-        // Relanzar: en disco la sesión sigue Active; el evento ya está en la cola.
+        store.failSaves = true
+        XCTAssertThrowsError(try controller.finish()) { error in
+            XCTAssertEqual(error as? ControllerError, .storageFailed)
+        }
+        XCTAssertEqual(storageErrors, 1)
+        XCTAssertEqual(controller.state, stateBefore, "sigue activo y en pausa, sin cerrar la pausa")
+        XCTAssertEqual(controller.history, historyBefore, "nada en el historial")
+        XCTAssertEqual(env.syncStore.value?.queue ?? [], queueBefore, "no se encola stage_finished")
+        XCTAssertEqual(store.value?.state, stateBefore, "el disco conserva la sesión activa")
+
+        // Si el proceso muere aquí, al relanzar se restaura el trayecto activo y finalizar
+        // emite un único stage_finished.
+        store.failSaves = false
         let relaunched = make()
         XCTAssertEqual(relaunched.activeSession?.sessionId, session.sessionId)
         env.clock.advance(by: 60)
         try relaunched.finish()
+        XCTAssertEqual(relaunched.state, .idle)
+        XCTAssertEqual(store.value?.state, .idle)
 
+        // Reintento en el mismo proceso tras el fallo: también un único stage_finished.
         let finished = (env.syncStore.value?.queue ?? []).filter {
             $0.type == .stageFinished && $0.sessionId == session.sessionId
         }
         XCTAssertEqual(finished.count, 1, "un solo stage_finished por sesión")
-        XCTAssertEqual(relaunched.state, .idle)
+    }
+
+    /// F-07: tras un fallo de guardado, reintentar en el mismo proceso finaliza normalmente.
+    @MainActor
+    func testFinishRetryAfterFailedSaveSucceeds() async throws {
+        let env = try makeEnv()
+        let store = FlakySessionStore()
+        let controller = CaminoController(
+            catalog: env.catalog,
+            poiSource: env.pois,
+            sessionStore: store,
+            syncStore: env.syncStore,
+            api: BlockedCaminoApi(),
+            clock: env.clock,
+            ids: SequentialIdGenerator(prefix: "id-"),
+            jitter: { 0 },
+            autoSync: false
+        )
+        let session = try controller.start(stageId: "cf-sarria-portomarin")
+        store.failSaves = true
+        XCTAssertThrowsError(try controller.finish())
+        XCTAssertTrue(controller.state.isActive)
+        store.failSaves = false
+        let summary = try controller.finish()
+        XCTAssertEqual(summary.sessionId, session.sessionId)
+        XCTAssertEqual(controller.state, .idle)
+        XCTAssertEqual(controller.history.first?.sessionId, session.sessionId)
+        let finished = (env.syncStore.value?.queue ?? []).filter {
+            $0.type == .stageFinished && $0.sessionId == session.sessionId
+        }
+        XCTAssertEqual(finished.count, 1)
     }
 }
