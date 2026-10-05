@@ -1,6 +1,6 @@
 # Contrato del backend — AUSENTE
 
-Estado: **BLOQUEADO** (2026-10-05).
+Estado: **PARCIAL** — ver [`WATCH_API_CONTRACT.md`](WATCH_API_CONTRACT.md) (rutas medidas; faltan schemas y dos bloqueos del backend).
 
 Ninguno de estos ficheros existe en el repositorio ni ha sido suministrado:
 
