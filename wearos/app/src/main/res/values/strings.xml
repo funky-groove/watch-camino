@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Camino Seguro</string>
+
+    <!-- Marca DEMO (MockCaminoApi) -->
+    <string name="demo_badge">DEMO</string>
+    <string name="demo_badge_a11y">Modo demostración: los datos no se envían a ningún servidor</string>
+    <string name="demo_data_notice">Etapas de demostración · coordenadas aproximadas</string>
+
+    <string name="loading">Cargando…</string>
+
+    <!-- Inicio -->
+    <string name="home_title">Camino Seguro</string>
+    <string name="action_start_stage">Comenzar etapa</string>
+    <string name="action_stats">Estadísticas</string>
+    <string name="action_sync">Sincronización</string>
+
+    <!-- Elegir etapa -->
+    <string name="select_title">Elegir etapa</string>
+    <string name="select_suggested">Sugerida · %1$s</string>
+    <string name="select_suggested_a11y">Etapa sugerida, %1$s</string>
+
+    <!-- Confirmar inicio -->
+    <string name="confirm_start_title">¿Comenzar esta etapa?</string>
+    <string name="confirm_start_yes">Comenzar</string>
+    <string name="action_cancel">Cancelar</string>
+
+    <!-- Etapa activa -->
+    <string name="active_remaining">restantes</string>
+    <string name="active_remaining_a11y">%1$s restantes</string>
+    <string name="active_walked">Recorrido %1$s</string>
+    <string name="active_walked_a11y">Recorrido: %1$s</string>
+    <string name="active_steps">%1$s pasos</string>
+    <string name="active_time">Tiempo %1$s</string>
+    <string name="active_time_a11y">Tiempo: %1$s</string>
+    <string name="active_next_poi">Próximo: %1$s</string>
+    <string name="active_next_poi_a11y">Próximo punto de interés: %1$s, %2$s, a %3$s</string>
+    <string name="active_no_fix">Buscando ubicación…</string>
+    <string name="active_last_alert">Aviso: %1$s</string>
+    <string name="action_finish">Finalizar</string>
+
+    <!-- Permisos denegados: la etapa sigue con lo disponible -->
+    <string name="perm_no_location">Sin ubicación: no se mide la distancia ni hay avisos de puntos de interés</string>
+    <string name="perm_no_activity">Sin permiso de actividad: no se cuentan los pasos</string>
+    <string name="perm_no_notifications">Sin notificaciones: los avisos sólo se ven aquí</string>
+    <string name="no_step_sensor">Este reloj no tiene contador de pasos</string>
+
+    <!-- Confirmar fin -->
+    <string name="confirm_finish_title">¿Finalizar la etapa?</string>
+    <string name="confirm_finish_yes">Sí, finalizar</string>
+    <string name="confirm_finish_no">Seguir caminando</string>
+
+    <!-- Resumen -->
+    <string name="summary_title">Etapa finalizada</string>
+    <string name="summary_saved">Guardado · se sincronizará</string>
+    <string name="action_done">Listo</string>
+
+    <!-- Estadísticas -->
+    <string name="stats_title">Estadísticas</string>
+    <string name="stats_today">Hoy</string>
+    <string name="stats_today_active">Hoy (en curso)</string>
+    <string name="stats_today_none">Aún no hay etapas</string>
+    <string name="stats_total">Acumulado del Camino</string>
+    <string name="stats_stages_one">1 etapa</string>
+    <string name="stats_stages_many">%1$d etapas</string>
+    <string name="stats_distance">Distancia %1$s</string>
+    <string name="stats_distance_a11y">Distancia: %1$s</string>
+    <string name="stats_steps">%1$s pasos</string>
+    <string name="stats_time">Tiempo %1$s</string>
+    <string name="stats_time_a11y">Tiempo: %1$s</string>
+
+    <!-- Sincronización -->
+    <string name="sync_title">Sincronización</string>
+    <string name="sync_synced">Sincronizado</string>
+    <string name="sync_pending_one">1 pendiente</string>
+    <string name="sync_pending_many">%1$d pendientes</string>
+    <string name="sync_offline">Sin conexión</string>
+    <string name="sync_blocked">Pendiente de backend</string>
+    <string name="sync_needs_link">Necesita vincular</string>
+    <string name="sync_syncing">Sincronizando…</string>
+    <string name="sync_queued_one">1 evento guardado en el reloj</string>
+    <string name="sync_queued_many">%1$d eventos guardados en el reloj</string>
+    <string name="sync_dead_letters">%1$d rechazados</string>
+    <string name="sync_blocked_explain">El servidor aún no está disponible. No se pierde nada.</string>
+    <string name="sync_status_a11y">Estado de sincronización: %1$s</string>
+    <string name="action_sync_now">Sincronizar ahora</string>
+
+    <!-- Categorías de POI (siempre texto, no sólo icono) -->
+    <string name="poi_water">Agua</string>
+    <string name="poi_shelter">Albergue</string>
+    <string name="poi_pharmacy">Farmacia</string>
+    <string name="poi_health">Salud</string>
+    <string name="poi_food">Comida</string>
+    <string name="poi_landmark">Monumento</string>
+
+    <!-- Notificaciones -->
+    <string name="channel_session_name">Etapa en curso</string>
+    <string name="channel_session_desc">Aviso permanente mientras hay una etapa activa</string>
+    <string name="channel_poi_name">Avisos de puntos de interés</string>
+    <string name="channel_poi_desc">Agua, albergues, farmacias y otros puntos cercanos</string>
+    <string name="notif_session_title">Etapa en curso</string>
+    <string name="notif_session_text">Midiendo distancia y pasos</string>
+    <string name="notif_poi_title">Cerca: %1$s</string>
+</resources>
