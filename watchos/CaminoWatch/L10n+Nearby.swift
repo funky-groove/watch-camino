@@ -95,7 +95,6 @@ extension L10n {
     static var settingsSectionStatus: String { tr("settings.section.status", "estado") }
     static var settingsThemeNegro: String { tr("settings.theme.negro", "negro") }
     static var settingsThemePerla: String { tr("settings.theme.perla", "perla") }
-    static var settingsThemeSelected: String { tr("settings.theme.selected", "activo") }
     static var settingsAlertsRule: String {
         tr("settings.alerts.rule", "un aviso por lugar y etapa, como máximo uno por minuto")
     }

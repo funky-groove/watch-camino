@@ -19,9 +19,13 @@ enum Icon {
     static let location = "location"
     static let locationOff = "location.slash"
     static let check = "checkmark"
+    /// Opción elegida / no elegida en filas de selección (con rasgo `.isSelected`).
+    static let selected = "checkmark.circle.fill"
+    static let unselected = "circle"
     static let warning = "exclamationmark.triangle"
     static let info = "info.circle"
     static let chevron = "chevron.right"
+    static let close = "xmark"
     static let theme = "circle.lefthalf.filled"
     static let phone = "phone"
     static let satellite = "antenna.radiowaves.left.and.right"

@@ -23,6 +23,7 @@ struct SectionLabel: View {
 }
 
 /// Tarjeta: superficie redondeada con borde fino. Sin sombras ni degradados.
+/// Su contenido usa los colores "sobre superficie" (`ThemePalette.onSurface`).
 struct Card<Content: View>: View {
     @Environment(\.palette) private var palette
     private let content: Content
@@ -35,6 +36,7 @@ struct Card<Content: View>: View {
         VStack(alignment: .leading, spacing: Spacing.xs) {
             content
         }
+        .onSurface(palette)
         .padding(Spacing.m)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
@@ -193,24 +195,26 @@ struct RowLabel: View {
     @Environment(\.palette) private var palette
 
     var body: some View {
+        // Siempre dentro de una fila (`RowButtonStyle`): colores "sobre superficie".
         HStack(alignment: .center, spacing: Spacing.s) {
-            IconView(name: symbol)
+            IconView(name: symbol, color: palette.onSurfacePrimary)
             VStack(alignment: .leading, spacing: 0) {
                 Text(title)
                     .typeStyle(.body)
-                    .foregroundStyle(palette.textPrimary)
+                    .foregroundStyle(palette.onSurfacePrimary)
                     .fixedSize(horizontal: false, vertical: true)
                 if let detail = detail {
                     Text(detail)
                         .typeStyle(.detail)
-                        .foregroundStyle(palette.textSecondary)
+                        .foregroundStyle(palette.onSurfaceSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
+            .layoutPriority(1)
             Spacer(minLength: 0)
             Image(systemName: Icon.chevron)
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(palette.textSecondary)
+                .foregroundStyle(palette.onSurfaceSecondary)
                 .accessibilityHidden(true)
         }
         .frame(maxWidth: .infinity, minHeight: Target.minimumHeight, alignment: .leading)
@@ -220,7 +224,8 @@ struct RowLabel: View {
 
 // MARK: - Botones
 
-/// Acción principal: relleno claro (Negro) u oscuro (Perla), texto en contraste.
+/// Acción principal: relleno claro (Negro: casi blanco; Perla en watchOS: perla) con texto
+/// oscuro en contraste (`actionPrimaryText`).
 struct PrimaryButtonStyle: ButtonStyle {
     @Environment(\.palette) private var palette
     @Environment(\.isEnabled) private var isEnabled
@@ -248,11 +253,13 @@ struct SecondaryButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {
-        let tint = destructive ? palette.critical : palette.textPrimary
+        // Texto sobre la superficie del botón (en Perla de watchOS, oscuro sobre perla).
+        let tint = destructive ? palette.criticalOnSurface : palette.onSurfacePrimary
         return configuration.label
             .typeStyle(.body)
             .multilineTextAlignment(.center)
             .foregroundStyle(tint)
+            .onSurface(palette)
             .frame(maxWidth: .infinity, minHeight: Target.minimumHeight)
             .padding(.horizontal, Spacing.s)
             .background(
@@ -261,7 +268,10 @@ struct SecondaryButtonStyle: ButtonStyle {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: Radius.control, style: .continuous)
-                    .strokeBorder(destructive ? palette.critical : palette.controlOutline, lineWidth: Stroke.control)
+                    .strokeBorder(
+                        destructive ? palette.criticalOnSurface : palette.controlOutline,
+                        lineWidth: Stroke.control
+                    )
             )
             .opacity(isEnabled ? 1 : 0.4)
             .contentShape(RoundedRectangle(cornerRadius: Radius.control, style: .continuous))
@@ -276,9 +286,10 @@ struct SOSButtonStyle: ButtonStyle {
     @Environment(\.palette) private var palette
 
     func makeBody(configuration: Configuration) -> some View {
+        // Pulsado se pinta sobre `surfaceRaised`: rojo "sobre superficie" (perla en Perla).
         configuration.label
             .typeStyle(.sectionLabel)
-            .foregroundStyle(palette.critical)
+            .foregroundStyle(configuration.isPressed ? palette.criticalOnSurface : palette.critical)
             .fixedSize()
             .padding(.horizontal, Spacing.s)
             .padding(.vertical, Spacing.xs)
@@ -316,12 +327,65 @@ struct EmergencyCallButtonStyle: ButtonStyle {
     }
 }
 
+/// Botón de icono de la barra superior (ajustes, cerrar hoja): círculo de superficie con el
+/// icono en contraste. Estilo propio: con el estilo del sistema el círculo se rellenaba con el
+/// tinte y el icono (mismo color) desaparecía. Objetivo táctil ≥ 44×44 pt.
+struct ToolbarIconButtonStyle: ButtonStyle {
+    @Environment(\.palette) private var palette
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .labelStyle(.iconOnly)
+            .font(.system(.body).weight(.semibold))
+            .imageScale(.medium)
+            .foregroundStyle(palette.onSurfacePrimary)
+            .frame(width: 36, height: 36)
+            .background(
+                Circle().fill(configuration.isPressed ? palette.surfaceRaised : palette.surface)
+            )
+            .overlay(
+                Circle().strokeBorder(palette.hairline, lineWidth: Stroke.hairline)
+            )
+            .frame(minWidth: Target.minimumHeight, minHeight: Target.minimumHeight)
+            .contentShape(Rectangle())
+    }
+}
+
+/// Botón «cerrar» de las hojas con `ToolbarIconButtonStyle` (sustituye al del sistema, cuyo
+/// icono no se veía sobre el círculo tintado). Cierra igual que el del sistema (`dismiss`).
+struct SheetCloseButton: ViewModifier {
+    @Environment(\.dismiss) private var dismiss
+
+    func body(content: Content) -> some View {
+        content.toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button {
+                    dismiss()
+                } label: {
+                    Label(L10n.commonClose, systemImage: Icon.close)
+                }
+                .buttonStyle(ToolbarIconButtonStyle())
+                .accessibilityLabel(L10n.commonClose)
+            }
+        }
+    }
+}
+
+extension View {
+    /// Hojas: botón «cerrar» propio, legible en ambos temas.
+    func sheetCloseButton() -> some View {
+        modifier(SheetCloseButton())
+    }
+}
+
 /// Fila pulsable sin estilo de botón del sistema (para NavigationLink y Button con RowLabel).
+/// Su contenido usa los colores "sobre superficie" (`ThemePalette.onSurface`).
 struct RowButtonStyle: ButtonStyle {
     @Environment(\.palette) private var palette
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
+            .onSurface(palette)
             .padding(.horizontal, Spacing.m)
             .background(
                 RoundedRectangle(cornerRadius: Radius.card, style: .continuous)
@@ -446,9 +510,10 @@ struct CompactMetricRow: View {
     }
 }
 
-/// Fila seleccionable (ajustes y filtros): icono, título y marca «activo» con texto.
+/// Fila de opción (ajustes): marca de selección (círculo / círculo con check) y título
+/// completo. El título ocupa todo el ancho restante y salta de línea por palabras; nunca se
+/// encoge ni se corta. La selección se anuncia con el rasgo `.isSelected`, no con una palabra.
 struct SelectionRow: View {
-    let symbol: String
     let title: String
     let isSelected: Bool
     let action: () -> Void
@@ -457,23 +522,21 @@ struct SelectionRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: Spacing.s) {
-                IconView(name: symbol)
+            HStack(alignment: .center, spacing: Spacing.s) {
+                IconView(
+                    name: isSelected ? Icon.selected : Icon.unselected,
+                    color: isSelected ? palette.onSurfacePrimary : palette.onSurfaceSecondary
+                )
                 Text(title)
                     .typeStyle(.body)
-                    .foregroundStyle(palette.textPrimary)
+                    .foregroundStyle(palette.onSurfacePrimary)
+                    .lineLimit(nil)
+                    .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 0)
-                if isSelected {
-                    HStack(spacing: Spacing.xxs) {
-                        IconView(name: Icon.check)
-                        Text(L10n.settingsThemeSelected)
-                            .typeStyle(.detail)
-                            .foregroundStyle(palette.textSecondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .layoutPriority(1)
             }
+            .padding(.vertical, Spacing.xs)
             .frame(maxWidth: .infinity, minHeight: Target.minimumHeight, alignment: .leading)
             .contentShape(Rectangle())
         }

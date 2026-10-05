@@ -25,14 +25,12 @@ struct SettingsView: View {
                     SectionLabel(text: L10n.settingsSectionUnits)
                         .padding(.top, Spacing.m)
                     SelectionRow(
-                        symbol: Icon.units,
                         title: L10n.settingsUnitsMetric,
                         isSelected: model.preferences.units == .metric
                     ) {
                         model.preferences.units = .metric
                     }
                     SelectionRow(
-                        symbol: Icon.units,
                         title: L10n.settingsUnitsImperial,
                         isSelected: model.preferences.units == .imperial
                     ) {
@@ -42,14 +40,12 @@ struct SettingsView: View {
                     SectionLabel(text: L10n.settingsSectionPace)
                         .padding(.top, Spacing.m)
                     SelectionRow(
-                        symbol: Icon.pace,
                         title: L10n.settingsPacePace,
                         isSelected: model.preferences.paceMode == .pace
                     ) {
                         model.preferences.paceMode = .pace
                     }
                     SelectionRow(
-                        symbol: Icon.pace,
                         title: L10n.settingsPaceSpeed,
                         isSelected: model.preferences.paceMode == .speed
                     ) {
@@ -62,7 +58,6 @@ struct SettingsView: View {
                         .padding(.top, Spacing.m)
                     ForEach(ThemeID.allCases, id: \.self) { theme in
                         SelectionRow(
-                            symbol: Icon.theme,
                             title: themeName(theme),
                             isSelected: themeStore.theme == theme
                         ) {
@@ -89,6 +84,9 @@ struct SettingsView: View {
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                         }
+                        // Interruptor encendido en verde (con el tinte claro del tema, la pista
+                        // encendida apenas se distinguía del pulgar blanco).
+                        .tint(palette.positive)
                         .frame(minHeight: Target.minimumHeight)
                         .accessibilityLabel(PoiText.category(category))
                     }

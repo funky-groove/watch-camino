@@ -169,7 +169,7 @@ struct StatLinkRow<Content: View>: View {
                 content
                 Image(systemName: Icon.chevron)
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(palette.textSecondary)
+                    .foregroundStyle(palette.onSurfaceSecondary)
                     .accessibilityHidden(true)
             }
             .padding(.vertical, Spacing.s)

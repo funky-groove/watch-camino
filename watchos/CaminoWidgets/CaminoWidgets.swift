@@ -152,8 +152,8 @@ private struct CircularView: View {
         } else {
             ZStack {
                 AccessoryWidgetBackground()
-                Image(systemName: "figure.walk")
-                    .font(.title3)
+                ShellMark()
+                    .frame(width: 24, height: 24)
                     .widgetAccentable()
             }
             .accessibilityElement(children: .ignore)
@@ -191,8 +191,8 @@ private struct CornerView: View {
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(WidgetFormat.fullLabel(snapshot, now: now))
         } else {
-            Image(systemName: "figure.walk")
-                .font(.title3)
+            ShellMark()
+                .frame(width: 22, height: 22)
                 .widgetAccentable()
                 .widgetLabel {
                     Text(snapshot == nil ? WidgetStrings.open : WidgetStrings.startShort)
@@ -558,3 +558,15 @@ extension WidgetSnapshot {
     CaminoEntry(date: .now, snapshot: .demoIdle)
 }
 #endif
+
+/// Concha de Camino Seguro (imagen plantilla de un solo color: el sistema la tiñe
+/// en los modos acentuado y monocromo). Decorativa: la etiqueta la da la vista contenedora.
+private struct ShellMark: View {
+    var body: some View {
+        Image("ShellMark")
+            .renderingMode(.template)
+            .resizable()
+            .scaledToFit()
+            .accessibilityHidden(true)
+    }
+}

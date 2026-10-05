@@ -140,7 +140,10 @@ extension L10n {
     static var faceHowTo: String { tr("face.prompt.how", "Cómo añadirlo") }
     static var faceNotNow: String { tr("face.prompt.notNow", "Ahora no") }
 
-    static var faceHelpTitle: String { tr("face.help.title", "acceso desde la esfera") }
+    /// Título de navegación: corto para que quepa junto a la hora (40 mm) sin desplazarse.
+    static var faceHelpTitle: String { tr("face.help.title", "esfera") }
+    /// Botón de cerrar de las hojas (sólo VoiceOver; visible como icono).
+    static var commonClose: String { tr("common.close", "cerrar") }
     static var faceHelpIntro: String {
         tr("face.help.intro", "Añade Camino Seguro a tu esfera como complicación:")
     }

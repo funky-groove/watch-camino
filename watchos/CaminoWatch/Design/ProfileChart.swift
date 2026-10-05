@@ -53,27 +53,37 @@ struct ProfileChart: View {
         }
         .chartXScale(domain: 0...xMax)
         .chartYScale(domain: yDomain)
+        // Ejes legibles: etiquetas en `textSecondary` (no el gris por defecto de Charts) y
+        // rejilla `hairline`. En X, `.aligned` mantiene la primera y la última etiqueta dentro
+        // del área (antes la última se cortaba en el borde). La unidad de Y va arriba y en
+        // horizontal (en vertical, a la izquierda, quedaba girada y recortada).
         .chartXAxis {
-            AxisMarks(values: .automatic(desiredCount: 3)) { value in
+            AxisMarks(preset: .aligned, values: .automatic(desiredCount: 3)) { value in
                 AxisGridLine()
+                    .foregroundStyle(palette.hairline)
                 AxisValueLabel {
                     Text(verbatim: axisNumber(value.as(Double.self) ?? 0, decimals: xMax < 10 ? 1 : 0))
+                        .foregroundStyle(palette.textSecondary)
                 }
             }
         }
         .chartYAxis {
             AxisMarks(position: .leading, values: .automatic(desiredCount: 3)) { value in
                 AxisGridLine()
+                    .foregroundStyle(palette.hairline)
                 AxisValueLabel {
                     Text(verbatim: axisNumber(value.as(Double.self) ?? 0, decimals: 0))
+                        .foregroundStyle(palette.textSecondary)
                 }
             }
         }
         .chartXAxisLabel(position: .bottom, alignment: .trailing) {
             Text(verbatim: display.units == .metric ? "km" : "mi")
+                .foregroundStyle(palette.textSecondary)
         }
-        .chartYAxisLabel(position: .leading, alignment: .top) {
+        .chartYAxisLabel(position: .top, alignment: .leading) {
             Text(verbatim: display.units == .metric ? "m" : "ft")
+                .foregroundStyle(palette.textSecondary)
         }
         .frame(height: height)
         .transaction { transaction in

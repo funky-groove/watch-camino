@@ -36,6 +36,7 @@
 "category.shelter" = "Albergue";
 "category.water" = "Agua";
 "common.cancel" = "Cancelar";
+"common.close" = "cerrar";
 "common.done" = "Hecho";
 "common.noData" = "sin datos";
 "demo.a11y" = "Modo demostración. Los datos no se envían a ningún servidor.";
@@ -56,7 +57,7 @@
 "face.help.step3" = "Toca un hueco y elige Camino Seguro con la Digital Crown.";
 "face.help.step4" = "Pulsa la Digital Crown para guardar.";
 "face.help.tapOnly" = "Al tocarla se abre la app; nunca inicia un trayecto.";
-"face.help.title" = "acceso desde la esfera";
+"face.help.title" = "esfera";
 "face.prompt.body" = "Abre Camino Seguro con un toque.";
 "face.prompt.how" = "Cómo añadirlo";
 "face.prompt.notNow" = "Ahora no";
@@ -183,7 +184,6 @@
 "settings.sync" = "sincronización";
 "settings.theme.negro" = "negro";
 "settings.theme.perla" = "perla";
-"settings.theme.selected" = "activo";
 "settings.title" = "ajustes";
 "settings.units.imperial" = "imperial (mi, ft)";
 "settings.units.metric" = "métrico (km, m)";

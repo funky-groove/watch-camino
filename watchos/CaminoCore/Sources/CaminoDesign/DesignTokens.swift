@@ -52,6 +52,15 @@ public enum ThemeID: String, CaseIterable, Codable, Sendable {
 }
 
 /// Paleta semántica. Las pantallas sólo usan estos nombres, nunca valores sueltos.
+///
+/// Texto "sobre fondo" (`textPrimary`, `textSecondary`, `positive`, `warning`, `critical`) y
+/// texto "sobre superficie" (`onSurface*`, `*OnSurface`) son tokens distintos: en la variante
+/// watchOS de Perla (`perlaWatch`) el fondo es negro y las superficies son perla, así que un
+/// mismo color no puede cumplir el contraste en ambos. En Negro y en la Perla compartida con
+/// Wear OS los tokens "sobre superficie" son iguales a los "sobre fondo".
+///
+/// ORDEN: los 12 primeros campos de cada paleta (de `background` a `critical`) los compara
+/// `wearos/core/.../DesignTokensTest.kt` con Wear OS; los tokens nuevos van detrás.
 public struct Palette: Equatable, Sendable {
     /// Fondo de pantalla.
     public let background: RGB
@@ -59,9 +68,9 @@ public struct Palette: Equatable, Sendable {
     public let surface: RGB
     /// Superficie elevada (fila pulsada, tarjeta dentro de tarjeta).
     public let surfaceRaised: RGB
-    /// Texto principal.
+    /// Texto principal sobre el fondo.
     public let textPrimary: RGB
-    /// Texto secundario y etiquetas.
+    /// Texto secundario y etiquetas sobre el fondo.
     public let textSecondary: RGB
     /// Separadores y bordes finos decorativos.
     public let hairline: RGB
@@ -70,11 +79,59 @@ public struct Palette: Equatable, Sendable {
     /// Acción principal: fondo y texto.
     public let actionPrimaryFill: RGB
     public let actionPrimaryText: RGB
-    /// Estados. Siempre acompañados de texto o símbolo.
+    /// Estados sobre el fondo. Siempre acompañados de texto o símbolo.
     public let positive: RGB
     public let warning: RGB
     public let critical: RGB
+    /// Texto principal sobre `surface`/`surfaceRaised` (tarjetas, filas, botones secundarios).
+    public let onSurfacePrimary: RGB
+    /// Texto secundario sobre `surface`/`surfaceRaised`.
+    public let onSurfaceSecondary: RGB
+    /// Estados sobre `surface`/`surfaceRaised`.
+    public let positiveOnSurface: RGB
+    public let warningOnSurface: RGB
+    public let criticalOnSurface: RGB
 
+    public init(
+        background: RGB,
+        surface: RGB,
+        surfaceRaised: RGB,
+        textPrimary: RGB,
+        textSecondary: RGB,
+        hairline: RGB,
+        controlOutline: RGB,
+        actionPrimaryFill: RGB,
+        actionPrimaryText: RGB,
+        positive: RGB,
+        warning: RGB,
+        critical: RGB,
+        onSurfacePrimary: RGB? = nil,
+        onSurfaceSecondary: RGB? = nil,
+        positiveOnSurface: RGB? = nil,
+        warningOnSurface: RGB? = nil,
+        criticalOnSurface: RGB? = nil
+    ) {
+        self.background = background
+        self.surface = surface
+        self.surfaceRaised = surfaceRaised
+        self.textPrimary = textPrimary
+        self.textSecondary = textSecondary
+        self.hairline = hairline
+        self.controlOutline = controlOutline
+        self.actionPrimaryFill = actionPrimaryFill
+        self.actionPrimaryText = actionPrimaryText
+        self.positive = positive
+        self.warning = warning
+        self.critical = critical
+        // Sin valor propio: el mismo que sobre el fondo (fondo y superficie del mismo tono).
+        self.onSurfacePrimary = onSurfacePrimary ?? textPrimary
+        self.onSurfaceSecondary = onSurfaceSecondary ?? textSecondary
+        self.positiveOnSurface = positiveOnSurface ?? positive
+        self.warningOnSurface = warningOnSurface ?? warning
+        self.criticalOnSurface = criticalOnSurface ?? critical
+    }
+
+    /// Paleta de referencia compartida con Wear OS (`DesignTokens.kt` replica estos hex).
     public static func of(_ theme: ThemeID) -> Palette {
         switch theme {
         case .negro:
@@ -83,6 +140,23 @@ public struct Palette: Equatable, Sendable {
             return .perla
         }
     }
+
+    /// Paleta que usa la app watchOS: Perla → `perlaWatch` (fondo negro, superficies perla).
+    public static func watchOS(_ theme: ThemeID) -> Palette {
+        switch theme {
+        case .negro:
+            return .negro
+        case .perla:
+            return .perlaWatch
+        }
+    }
+
+    /// Paletas que `ContrastTests` comprueba: las de la app watchOS y la Perla de referencia.
+    public static let checked: [(name: String, palette: Palette)] = [
+        ("negro", .negro),
+        ("perlaWatch", .perlaWatch),
+        ("perla", .perla),
+    ]
 
     public static let negro = Palette(
         background: RGB(0x000000),
@@ -99,6 +173,7 @@ public struct Palette: Equatable, Sendable {
         critical: RGB(0xFF7A6B)
     )
 
+    /// Perla de referencia (fondo claro). La usa Wear OS; en watchOS se usa `perlaWatch`.
     public static let perla = Palette(
         background: RGB(0xF3EFE7),
         surface: RGB(0xEAE4D8),
@@ -113,10 +188,35 @@ public struct Palette: Equatable, Sendable {
         warning: RGB(0x7E5200),
         critical: RGB(0xA8291F)
     )
+
+    /// Adaptación watchOS de Perla: la hora y el botón «atrás» del sistema son siempre
+    /// blancos y no se pueden configurar, así que el fondo de pantalla es NEGRO y el carácter
+    /// perla lo llevan las superficies (tarjetas, filas, botones) con texto oscuro.
+    /// Fondo, texto sobre fondo y estados sobre fondo coinciden con Negro; superficies, texto
+    /// sobre superficie y estados sobre superficie con la Perla de referencia.
+    public static let perlaWatch = Palette(
+        background: RGB(0x000000),
+        surface: RGB(0xF3EFE7),
+        surfaceRaised: RGB(0xEAE4D8),
+        textPrimary: RGB(0xF2EFE8),
+        textSecondary: RGB(0xA8A399),
+        hairline: RGB(0x3B3936),
+        controlOutline: RGB(0x857D70),
+        actionPrimaryFill: RGB(0xF3EFE7),
+        actionPrimaryText: RGB(0x1C1B19),
+        positive: RGB(0x5DBB7E),
+        warning: RGB(0xE5A93D),
+        critical: RGB(0xFF7A6B),
+        onSurfacePrimary: RGB(0x1C1B19),
+        onSurfaceSecondary: RGB(0x5B564E),
+        positiveOnSurface: RGB(0x24633A),
+        warningOnSurface: RGB(0x7E5200),
+        criticalOnSurface: RGB(0xA8291F)
+    )
 }
 
 /// Pares de color que la interfaz realmente combina, con el contraste mínimo exigido.
-/// `ContrastTests` los comprueba en ambos temas.
+/// `ContrastTests` los comprueba en cada paleta de `Palette.checked`.
 public struct ContrastRequirement {
     public enum Kind: String, Sendable {
         /// Texto de cualquier tamaño (umbral de texto normal, 4,5:1, aunque sea grande).
@@ -141,20 +241,32 @@ public struct ContrastRequirement {
 
     public static var all: [ContrastRequirement] {
         var list: [ContrastRequirement] = []
-        let grounds: [(String, KeyPath<Palette, RGB>)] = [
-            ("fondo", \Palette.background),
-            ("superficie", \Palette.surface),
-            ("superficie elevada", \Palette.surfaceRaised),
-        ]
-        let texts: [(String, KeyPath<Palette, RGB>)] = [
+        // Texto y estados sobre el fondo de pantalla.
+        let onBackground: [(String, KeyPath<Palette, RGB>)] = [
             ("texto principal", \Palette.textPrimary),
             ("texto secundario", \Palette.textSecondary),
             ("positivo", \Palette.positive),
             ("advertencia", \Palette.warning),
             ("crítico", \Palette.critical),
         ]
-        for (textName, text) in texts {
-            for (groundName, ground) in grounds {
+        for (textName, text) in onBackground {
+            list.append(ContrastRequirement(
+                name: "\(textName) sobre fondo", kind: .text, foreground: text, background: \Palette.background))
+        }
+        // Texto y estados dentro de tarjetas, filas y botones secundarios.
+        let surfaces: [(String, KeyPath<Palette, RGB>)] = [
+            ("superficie", \Palette.surface),
+            ("superficie elevada", \Palette.surfaceRaised),
+        ]
+        let onSurface: [(String, KeyPath<Palette, RGB>)] = [
+            ("texto principal", \Palette.onSurfacePrimary),
+            ("texto secundario", \Palette.onSurfaceSecondary),
+            ("positivo", \Palette.positiveOnSurface),
+            ("advertencia", \Palette.warningOnSurface),
+            ("crítico", \Palette.criticalOnSurface),
+        ]
+        for (textName, text) in onSurface {
+            for (groundName, ground) in surfaces {
                 list.append(ContrastRequirement(
                     name: "\(textName) sobre \(groundName)", kind: .text, foreground: text, background: ground))
             }
@@ -166,7 +278,7 @@ public struct ContrastRequirement {
             name: "acción principal sobre fondo", kind: .nonText,
             foreground: \Palette.actionPrimaryFill, background: \Palette.background))
         // Acción de emergencia ("Llamar al 112"): relleno `critical` con el texto de acción
-        // principal, que se invierte por tema (oscuro en Negro, claro en Perla).
+        // principal (oscuro en Negro y en perlaWatch, claro en la Perla de referencia).
         list.append(ContrastRequirement(
             name: "texto de acción de emergencia", kind: .text,
             foreground: \Palette.actionPrimaryText, background: \Palette.critical))

@@ -21,6 +21,7 @@ struct RootView: View {
                 // principal (no del NavigationStack, que ya presenta el resumen).
                 .sheet(isPresented: $model.showFaceAccessPrompt, onDismiss: { faceAccessSheetClosed() }) {
                     FaceAccessPromptView()
+                        .sheetCloseButton()
                         .environmentObject(model)
                         .environmentObject(themeStore)
                         .themed(themeStore.theme)
@@ -32,6 +33,7 @@ struct RootView: View {
         }
         .sheet(item: $model.finishedSummary) { summary in
             SummaryView(summary: summary)
+                .sheetCloseButton()
                 .environmentObject(model)
                 .environmentObject(themeStore)
                 .themed(themeStore.theme)

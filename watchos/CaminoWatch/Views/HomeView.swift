@@ -56,6 +56,9 @@ struct HomeView: View {
                     Label(L10n.myStageSettings, systemImage: Icon.settings)
                         .labelStyle(.iconOnly)
                 }
+                // Estilo propio: el del sistema rellenaba el círculo con el tinte y el icono
+                // (del mismo color) no se veía.
+                .buttonStyle(ToolbarIconButtonStyle())
                 .accessibilityLabel(L10n.myStageSettings)
             }
             ToolbarItem(placement: .topBarTrailing) {

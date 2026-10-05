@@ -10,6 +10,8 @@
 #    (DemoScenario: datos DEMO en memoria, nunca el almacenamiento real) y captura.
 # 4. En el pequeño, además, texto grande (accessibility-large) en inicio activo y estadísticas,
 #    y una pasada en inglés (-AppleLanguages "(en)" -AppleLocale en_US) de trayecto, SOS y ajustes.
+#    Todas las demás pasadas fuerzan español (-AppleLanguages "(es)" -AppleLocale es_ES), sea cual
+#    sea el idioma del simulador.
 #    V1.1: trayecto en pausa, perfil ampliado, Lugares, ayuda de la esfera, aviso de primer uso
 #    (forzado con -demo.route face-prompt), resumen y trayecto en unidades imperiales/velocidad.
 #    Las complicaciones (CaminoWidgets) NO se pueden capturar con simctl: se verifican con los
@@ -80,6 +82,9 @@ ENGLISH_SCREENS=(
   "sos|active|sos"
   "ajustes|idle|settings"
 )
+# Idioma SIEMPRE explícito: el simulador suele estar en inglés y, sin estos argumentos, las
+# pasadas "en español" salían en inglés.
+SPANISH_ARGS='-AppleLanguages (es) -AppleLocale es_ES'
 ENGLISH_ARGS='-AppleLanguages (en) -AppleLocale en_US'
 
 # Posición simulada coherente con cada escenario (por si la app pide una lectura real).
@@ -263,7 +268,7 @@ run_device() {  # $1 devicetype, $2 nombre, $3 = "small" | "large"
   for theme in "${THEMES[@]}"; do
     for entry in "${SCREENS[@]}"; do
       IFS='|' read -r screen scenario route extra <<<"$entry"
-      capture "$udid" "$dslug" "$2" "$theme" "$screen" "$scenario" "$route" "" "$extra"
+      capture "$udid" "$dslug" "$2" "$theme" "$screen" "$scenario" "$route" "" "$SPANISH_ARGS${extra:+ $extra}"
     done
   done
   if [ "$3" = "small" ]; then
@@ -272,7 +277,7 @@ run_device() {  # $1 devicetype, $2 nombre, $3 = "small" | "large"
       for theme in "${THEMES[@]}"; do
         for entry in "${LARGE_TEXT_SCREENS[@]}"; do
           IFS='|' read -r screen scenario route <<<"$entry"
-          capture "$udid" "$dslug" "$2" "$theme" "$screen" "$scenario" "$route" "_texto-grande"
+          capture "$udid" "$dslug" "$2" "$theme" "$screen" "$scenario" "$route" "_texto-grande" "$SPANISH_ARGS"
         done
       done
       xcrun simctl ui "$udid" content_size large >/dev/null 2>&1 || true

@@ -152,22 +152,24 @@ private struct NearbyPoiRow: View {
         let distance = PoiText.straightLine(item.distanceMeters, approximate: approximate, display)
         let spokenDistance = PoiText.spokenStraightLine(item.distanceMeters, approximate: approximate, display)
 
+        // Siempre dentro de una fila (`RowButtonStyle`): colores "sobre superficie".
         return HStack(alignment: .center, spacing: Spacing.s) {
-            IconView(name: Icon.category(item.poi.category))
+            IconView(name: Icon.category(item.poi.category), color: palette.onSurfacePrimary)
             VStack(alignment: .leading, spacing: 0) {
                 Text(item.poi.name)
                     .typeStyle(.body)
-                    .foregroundStyle(palette.textPrimary)
+                    .foregroundStyle(palette.onSurfacePrimary)
                     .fixedSize(horizontal: false, vertical: true)
                 Text(category + " · " + distance)
                     .font(TypeStyle.detail.font.monospacedDigit())
-                    .foregroundStyle(palette.textSecondary)
+                    .foregroundStyle(palette.onSurfaceSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            .layoutPriority(1)
             Spacer(minLength: 0)
             Image(systemName: Icon.chevron)
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(palette.textSecondary)
+                .foregroundStyle(palette.onSurfaceSecondary)
                 .accessibilityHidden(true)
         }
         .padding(.vertical, Spacing.s)
