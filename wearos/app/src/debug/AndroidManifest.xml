@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    SÓLO Debug: escenarios de demostración para capturas (wearos/scripts/screenshots.sh).
+    El provider no expone datos (exported="false"); sólo arranca DemoScenarioInstaller, que actúa
+    únicamente si el Intent de lanzamiento trae el extra demo.scenario. Sin permisos nuevos.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <provider
+            android:name=".demo.DemoBootstrapProvider"
+            android:authorities="${applicationId}.demo-bootstrap"
+            android:exported="false" />
+    </application>
+</manifest>

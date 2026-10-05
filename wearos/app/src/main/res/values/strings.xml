@@ -72,9 +72,6 @@
 
     <!-- Resumen -->
     <string name="summary_title">Trayecto finalizado</string>
-    <!-- Sin servidor real (V-09): nunca "se sincronizará" -->
-    <string name="summary_saved">Guardado en el reloj · envío pendiente de backend</string>
-    <string name="summary_saved_demo">Guardado en el reloj · envío simulado (demo)</string>
     <string name="action_done">Listo</string>
 
     <!-- Estadísticas -->
@@ -198,4 +195,115 @@
     <string name="sos_native_section">SOS del reloj</string>
     <string name="sos_native_help">Muchos relojes tienen un SOS propio que se activa pulsando varias veces un botón. Varía según el fabricante: consulta los ajustes de tu reloj.</string>
     <string name="sos_satellite">En algunos relojes con LTE y regiones compatibles, el SOS del reloj puede enviar mensajes por satélite; esta app no lo controla.</string>
+
+    <!-- ===================== V1.1 ===================== -->
+    <!-- Genéricas: "Etiqueta: valor" -->
+    <string name="label_value">%1$s: %2$s</string>
+    <string name="label_value_a11y">%1$s: %2$s</string>
+
+    <!-- Trayecto: A. estadísticas principales -->
+    <string name="trip_status_moving">En marcha</string>
+    <string name="trip_status_paused">Pausado</string>
+    <string name="trip_waiting_gps">esperando GPS</string>
+    <string name="trip_label_distance">Distancia</string>
+    <string name="trip_label_moving_time">En movimiento</string>
+    <string name="trip_label_total_time">Duración total</string>
+    <string name="trip_label_pace">Ritmo</string>
+    <string name="trip_label_speed">Velocidad</string>
+    <string name="trip_primary_a11y">%1$s. Distancia: %2$s. Tiempo en movimiento: %3$s. %4$s: %5$s</string>
+    <string name="trip_stage_line">%1$s · quedan %2$s</string>
+    <string name="trip_stage_line_a11y">Etapa %1$s, quedan %2$s</string>
+
+    <!-- Trayecto: B. altitud y desnivel (fuente: GPS) -->
+    <string name="section_altitude">Altitud y desnivel</string>
+    <string name="trip_label_altitude">Altitud</string>
+    <string name="trip_label_ascent">Subida</string>
+    <string name="trip_label_descent">Bajada</string>
+    <string name="trip_altitude_source">Fuente de la altitud: GPS</string>
+    <string name="trip_altitude_stale">Altitud antigua: más de 5 min sin datos del GPS</string>
+    <string name="trip_altitude_none">Sin datos de altitud del GPS</string>
+    <string name="trip_altitude_a11y">Altitud: %1$s, según el GPS</string>
+    <string name="trip_altitude_stale_a11y">Altitud antigua: %1$s, según el GPS, de hace más de 5 minutos</string>
+
+    <!-- Trayecto: C. perfil registrado -->
+    <string name="section_profile">Perfil de altitud</string>
+    <string name="profile_title">Perfil de altitud</string>
+    <string name="profile_none">Aún no hay perfil</string>
+    <string name="profile_a11y">Perfil de %1$s, de %2$s a %3$s</string>
+    <string name="profile_open_action">abrir el perfil ampliado</string>
+    <string name="profile_recorded_note">Sólo lo recorrido. Los tramos sin datos no se unen.</string>
+
+    <!-- Trayecto: D. lugares útiles -->
+    <string name="section_places">Lugares útiles</string>
+    <string name="places_see_all">Ver todos</string>
+    <string name="places_none_stage">No hay lugares en esta etapa</string>
+    <string name="places_straight_line">%1$s en línea recta</string>
+    <string name="place_distance_unknown_short">distancia sin ubicación</string>
+    <string name="place_row_a11y">%1$s, %2$s, %3$s</string>
+
+    <!-- Trayecto: E. controles -->
+    <string name="action_pause">Pausar</string>
+    <string name="action_resume">Reanudar</string>
+    <string name="trip_paused_note">En pausa no se suman distancia ni tiempo en movimiento. Los pasos siguen contando.</string>
+
+    <!-- Lugares -->
+    <string name="places_title">Lugares</string>
+    <string name="places_filter_all">Todos</string>
+    <string name="places_filter_water">Agua</string>
+    <string name="places_filter_shelter">Alojamiento</string>
+    <string name="places_no_location">Sin ubicación: no se pueden medir distancias</string>
+    <string name="places_location_stale">Ubicación antigua: las distancias pueden no ser exactas</string>
+    <string name="places_empty_filter">No hay lugares de este tipo</string>
+    <string name="places_demo_notice">Lugares de demostración · coordenadas aproximadas</string>
+    <string name="place_not_found">Lugar no encontrado</string>
+    <string name="place_distance_unknown">Distancia no disponible: sin ubicación</string>
+    <string name="action_call">Llamar</string>
+    <string name="place_call_hint">Abre el marcador; la llamada la confirmas tú</string>
+    <string name="place_call_failed">Este reloj no ha abierto el marcador.</string>
+
+    <!-- Resumen al finalizar -->
+    <string name="summary_avg_pace">Ritmo medio</string>
+    <string name="summary_avg_speed">Velocidad media</string>
+    <string name="summary_saved_watch">Guardado en el reloj</string>
+    <string name="summary_sync_blocked">Envío no disponible (sin servidor)</string>
+    <string name="summary_sync_demo">Envío simulado (demo)</string>
+    <string name="summary_sync_pending">Pendiente de envío</string>
+
+    <!-- Ajustes V1.1 -->
+    <string name="settings_face_access">Acceso desde la esfera</string>
+    <string name="settings_units">Unidades</string>
+    <string name="units_metric">Métrico (km, m)</string>
+    <string name="units_imperial">Imperial (mi, ft)</string>
+    <string name="settings_pace_mode">Ritmo o velocidad</string>
+    <string name="pace_mode_pace">Ritmo (min/km o min/mi)</string>
+    <string name="pace_mode_speed">Velocidad (km/h o mph)</string>
+    <string name="settings_language">Idioma</string>
+    <string name="language_system">Idioma del reloj</string>
+    <string name="language_es">Español</string>
+    <string name="language_en">English</string>
+    <string name="language_follows_watch">Sigue el idioma del reloj</string>
+    <string name="settings_status">Estado</string>
+    <string name="settings_demo_data">Etapas y lugares de demostración, con coordenadas aproximadas.</string>
+
+    <!-- Aviso de primer uso (spec V1.1 §I). Nunca afirma que la complicación esté añadida. -->
+    <string name="face_hint_title">Accede desde tu esfera</string>
+    <string name="face_hint_text">Abre Camino Seguro con un toque.</string>
+    <string name="face_hint_how">Cómo añadirlo</string>
+    <string name="face_hint_not_now">Ahora no</string>
+    <string name="face_help_title">Añadir a la esfera</string>
+    <string name="face_help_step1">1. Mantén pulsada la esfera del reloj.</string>
+    <string name="face_help_step2">2. Toca Personalizar o Editar.</string>
+    <string name="face_help_step3">3. Toca un hueco de complicación.</string>
+    <string name="face_help_step4">4. Elige Camino Seguro.</string>
+    <string name="face_help_vary">Los pasos pueden variar según el fabricante y la esfera. No todas las esferas admiten complicaciones.</string>
+    <string name="face_help_shows">Muestra «Iniciar trayecto» o la distancia del trayecto en curso. Al tocarla se abre la app; nunca inicia nada.</string>
+
+    <!-- Complicación de esfera -->
+    <string name="complication_label">Camino Seguro · trayecto</string>
+    <string name="complication_short_idle">Camino</string>
+    <string name="complication_moving">en marcha</string>
+    <string name="complication_paused">pausado</string>
+    <string name="complication_long_trip">%1$s · %2$s</string>
+    <string name="complication_idle_a11y">Camino Seguro: iniciar trayecto</string>
+    <string name="complication_trip_a11y">Camino Seguro: %1$s, %2$s</string>
 </resources>

@@ -80,5 +80,8 @@ dependencies {
     implementation(libs.androidx.wear.compose.foundation)
     implementation(libs.androidx.wear.compose.navigation)
 
+    // Complicación de esfera (V1.1 §H): SuspendingComplicationDataSourceService + tipos de datos.
+    implementation(libs.androidx.wear.watchface.complications.data.source.ktx)
+
     testImplementation(libs.junit)
 }

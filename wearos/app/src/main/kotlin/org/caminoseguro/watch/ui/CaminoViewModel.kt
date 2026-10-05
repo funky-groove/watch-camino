@@ -19,10 +19,16 @@ import kotlinx.coroutines.launch
 import org.caminoseguro.watch.AppContainer
 import org.caminoseguro.watch.CaminoApplication
 import org.caminoseguro.watch.core.ActionGate
+import org.caminoseguro.watch.core.DisplayPreferences
 import org.caminoseguro.watch.core.EmergencyLocationPermission
 import org.caminoseguro.watch.core.EmergencyLocationSummary
+import org.caminoseguro.watch.core.FaceHintPolicy
+import org.caminoseguro.watch.core.FaceHintState
 import org.caminoseguro.watch.core.FinishOutcome
 import org.caminoseguro.watch.core.LocationFix
+import org.caminoseguro.watch.core.PaceMode
+import org.caminoseguro.watch.core.PauseOutcome
+import org.caminoseguro.watch.core.Poi
 import org.caminoseguro.watch.core.PoiAlert
 import org.caminoseguro.watch.core.PoiCategory
 import org.caminoseguro.watch.core.SessionSnapshot
@@ -33,6 +39,7 @@ import org.caminoseguro.watch.core.SosPresentation
 import org.caminoseguro.watch.core.SosViewState
 import org.caminoseguro.watch.core.SyncSnapshot
 import org.caminoseguro.watch.core.ThemeId
+import org.caminoseguro.watch.core.UnitSystem
 import org.caminoseguro.watch.platform.Permissions
 import org.caminoseguro.watch.platform.PermissionsState
 import org.caminoseguro.watch.platform.SensorsState
@@ -144,6 +151,101 @@ class CaminoViewModel(
     fun setTheme(theme: ThemeId) {
         container.setTheme(theme)
     }
+
+    // ------------------------------------------------------------ Unidades, ritmo/velocidad e idioma (§G)
+
+    val displayPreferences: StateFlow<DisplayPreferences> = container.displayPreferences
+
+    fun setUnits(units: UnitSystem) = container.setUnits(units)
+
+    fun setPaceMode(mode: PaceMode) = container.setPaceMode(mode)
+
+    /** null = idioma del reloj. Sólo API 33+ (LocaleManager recrea la actividad). */
+    fun setLanguage(language: org.caminoseguro.watch.core.AppLanguage?) = container.setLanguage(language)
+
+    // ------------------------------------------------------------ Pausa (§C)
+
+    private val pauseGate = ActionGate()
+
+    /** «Pausar» / «Reanudar». Un toque doble no pausa y reanuda a la vez. */
+    fun togglePause() {
+        val active = state().active ?: return
+        if (!pauseGate.tryEnter()) return
+        launchGuarded {
+            try {
+                val out = if (active.paused) controller.resume() else controller.pause()
+                // Rejected (ya pausado / no pausado / sin trayecto): el estado ya es el bueno; nada que hacer.
+                if (out is PauseOutcome.Rejected) Log.i(TAG, "Pausa ignorada: ${out.error.name}")
+            } finally {
+                pauseGate.reset()
+            }
+        }
+    }
+
+    // ------------------------------------------------------------ Complicación → Trayecto
+
+    private val _openTripPending = MutableStateFlow(false)
+
+    /** Petición pendiente de volver a Trayecto (toque en la complicación); se consume al navegar. */
+    val openTripPending: StateFlow<Boolean> = _openTripPending.asStateFlow()
+
+    /** Sólo navega: nunca inicia un trayecto ni una llamada. */
+    fun openTrip() {
+        _openTripPending.value = true
+    }
+
+    fun consumeOpenTrip() {
+        _openTripPending.value = false
+    }
+
+    // ------------------------------------------------------------ Aviso «Accede desde tu esfera» (§I)
+
+    private val faceHintOffered = MutableStateFlow(false)
+
+    /** ¿Ofrecer ahora el aviso? (una vez, sin trayecto, no tras recuperar uno en este arranque). */
+    val faceHintOffer: StateFlow<Boolean> = combine(
+        combine(container.faceHintLoaded, controller.ready) { loaded, ready -> loaded && ready },
+        controller.snapshot,
+        container.faceHint,
+        container.restoredActiveThisLaunch,
+        faceHintOffered,
+    ) { ready, snapshot, hint, restored, offered ->
+        FaceHintPolicy.shouldOffer(hint, ready, snapshot.activeSession != null, restored, offered)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    /** Se ha mostrado en este arranque: cerrarlo con «atrás» lo deja sin decidir (se ofrecerá otro día). */
+    fun markFaceHintOffered() {
+        faceHintOffered.value = true
+    }
+
+    fun dismissFaceHint() = container.setFaceHint(FaceHintState.dismissed)
+
+    fun faceHintHelpOpened() = container.setFaceHint(FaceHintState.helpOpened)
+
+    // ------------------------------------------------------------ Lugares (§J)
+
+    /** Posición para Lugares sin trayecto: última conocida del sistema (nunca pide permiso). */
+    private val placesFix = MutableStateFlow<LocationFix?>(null)
+
+    /** Lugares: los de la etapa activa o, sin trayecto, todos los de demostración. */
+    val places: StateFlow<PlacesSource> = combine(
+        controller.activePois,
+        controller.latestFix,
+        placesFix,
+        controller.ready,
+    ) { activePois, tripFix, readFix, _ ->
+        val pois = if (controller.snapshot.value.activeSession != null) activePois else container.allPois
+        val fix = EmergencyLocationSummary.newest(tripFix, readFix)
+        PlacesSource(pois = pois, position = fix, demoData = true)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PlacesSource(emptyList(), null, true))
+
+    /** Al abrir Lugares: última ubicación conocida (sin pedir permiso ni esperar al GPS). */
+    fun refreshPlacesLocation() {
+        val known = container.emergencyLocation.lastKnown() ?: return
+        placesFix.value = EmergencyLocationSummary.newest(placesFix.value, known)
+    }
+
+    fun poi(id: String): Poi? = container.allPois.firstOrNull { it.id == id }
 
     // ------------------------------------------------------------ Iniciar trayecto sin doble inicio
 

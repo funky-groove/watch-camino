@@ -71,8 +71,6 @@
 
     <!-- Summary -->
     <string name="summary_title">Trip finished</string>
-    <string name="summary_saved">Saved on the watch · upload pending backend</string>
-    <string name="summary_saved_demo">Saved on the watch · simulated upload (demo)</string>
     <string name="action_done">Done</string>
 
     <!-- Statistics -->
@@ -191,4 +189,104 @@
     <string name="sos_native_section">Watch SOS</string>
     <string name="sos_native_help">Many watches have their own SOS, triggered by pressing a button several times. It varies by manufacturer: check your watch settings.</string>
     <string name="sos_satellite">On some LTE watches and in supported regions, the watch SOS can send messages via satellite; this app does not control it.</string>
+
+    <!-- ===================== V1.1 ===================== -->
+    <string name="label_value">%1$s: %2$s</string>
+    <string name="label_value_a11y">%1$s: %2$s</string>
+
+    <string name="trip_status_moving">Moving</string>
+    <string name="trip_status_paused">Paused</string>
+    <string name="trip_waiting_gps">waiting for GPS</string>
+    <string name="trip_label_distance">Distance</string>
+    <string name="trip_label_moving_time">Moving time</string>
+    <string name="trip_label_total_time">Total time</string>
+    <string name="trip_label_pace">Pace</string>
+    <string name="trip_label_speed">Speed</string>
+    <string name="trip_primary_a11y">%1$s. Distance: %2$s. Moving time: %3$s. %4$s: %5$s</string>
+    <string name="trip_stage_line">%1$s · %2$s left</string>
+    <string name="trip_stage_line_a11y">Stage %1$s, %2$s left</string>
+
+    <string name="section_altitude">Altitude and climb</string>
+    <string name="trip_label_altitude">Altitude</string>
+    <string name="trip_label_ascent">Ascent</string>
+    <string name="trip_label_descent">Descent</string>
+    <string name="trip_altitude_source">Altitude source: GPS</string>
+    <string name="trip_altitude_stale">Old altitude: no GPS data for over 5 min</string>
+    <string name="trip_altitude_none">No GPS altitude data</string>
+    <string name="trip_altitude_a11y">Altitude: %1$s, from GPS</string>
+    <string name="trip_altitude_stale_a11y">Old altitude: %1$s, from GPS, more than 5 minutes ago</string>
+
+    <string name="section_profile">Elevation profile</string>
+    <string name="profile_title">Elevation profile</string>
+    <string name="profile_none">No profile yet</string>
+    <string name="profile_a11y">Profile over %1$s, from %2$s to %3$s</string>
+    <string name="profile_open_action">open the full profile</string>
+    <string name="profile_recorded_note">Recorded track only. Sections without data are not joined.</string>
+
+    <string name="section_places">Useful places</string>
+    <string name="places_see_all">See all</string>
+    <string name="places_none_stage">No places on this stage</string>
+    <string name="places_straight_line">%1$s in a straight line</string>
+    <string name="place_distance_unknown_short">distance needs location</string>
+    <string name="place_row_a11y">%1$s, %2$s, %3$s</string>
+
+    <string name="action_pause">Pause</string>
+    <string name="action_resume">Resume</string>
+    <string name="trip_paused_note">While paused, distance and moving time are not added. Steps keep counting.</string>
+
+    <string name="places_title">Places</string>
+    <string name="places_filter_all">All</string>
+    <string name="places_filter_water">Water</string>
+    <string name="places_filter_shelter">Lodging</string>
+    <string name="places_no_location">No location: distances cannot be measured</string>
+    <string name="places_location_stale">Old location: distances may be inaccurate</string>
+    <string name="places_empty_filter">No places of this type</string>
+    <string name="places_demo_notice">Demo places · approximate coordinates</string>
+    <string name="place_not_found">Place not found</string>
+    <string name="place_distance_unknown">Distance not available: no location</string>
+    <string name="action_call">Call</string>
+    <string name="place_call_hint">Opens the dialer; you confirm the call</string>
+    <string name="place_call_failed">This watch did not open the dialer.</string>
+
+    <string name="summary_avg_pace">Average pace</string>
+    <string name="summary_avg_speed">Average speed</string>
+    <string name="summary_saved_watch">Saved on the watch</string>
+    <string name="summary_sync_blocked">Upload not available (no server)</string>
+    <string name="summary_sync_demo">Simulated upload (demo)</string>
+    <string name="summary_sync_pending">Waiting to upload</string>
+
+    <string name="settings_face_access">Access from your watch face</string>
+    <string name="settings_units">Units</string>
+    <string name="units_metric">Metric (km, m)</string>
+    <string name="units_imperial">Imperial (mi, ft)</string>
+    <string name="settings_pace_mode">Pace or speed</string>
+    <string name="pace_mode_pace">Pace (min/km or min/mi)</string>
+    <string name="pace_mode_speed">Speed (km/h or mph)</string>
+    <string name="settings_language">Language</string>
+    <string name="language_system">Watch language</string>
+    <string name="language_es">Español</string>
+    <string name="language_en">English</string>
+    <string name="language_follows_watch">Follows the watch language</string>
+    <string name="settings_status">Status</string>
+    <string name="settings_demo_data">Demo stages and places, with approximate coordinates.</string>
+
+    <string name="face_hint_title">Access from your watch face</string>
+    <string name="face_hint_text">Open Camino Seguro with one tap.</string>
+    <string name="face_hint_how">How to add it</string>
+    <string name="face_hint_not_now">Not now</string>
+    <string name="face_help_title">Add to watch face</string>
+    <string name="face_help_step1">1. Touch and hold the watch face.</string>
+    <string name="face_help_step2">2. Tap Customize or Edit.</string>
+    <string name="face_help_step3">3. Tap a complication slot.</string>
+    <string name="face_help_step4">4. Choose Camino Seguro.</string>
+    <string name="face_help_vary">Steps may vary by manufacturer and watch face. Not every watch face supports complications.</string>
+    <string name="face_help_shows">Shows “Start trip” or the distance of the current trip. Tapping it opens the app; it never starts anything.</string>
+
+    <string name="complication_label">Camino Seguro · trip</string>
+    <string name="complication_short_idle">Camino</string>
+    <string name="complication_moving">moving</string>
+    <string name="complication_paused">paused</string>
+    <string name="complication_long_trip">%1$s · %2$s</string>
+    <string name="complication_idle_a11y">Camino Seguro: start trip</string>
+    <string name="complication_trip_a11y">Camino Seguro: %1$s, %2$s</string>
 </resources>

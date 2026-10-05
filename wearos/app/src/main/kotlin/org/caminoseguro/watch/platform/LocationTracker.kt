@@ -83,4 +83,8 @@ internal fun Location.toFix(): LocationFix = LocationFix(
     // Sin precisión conocida → se trata como inaceptable (el acumulador la descartará).
     accuracyMeters = if (hasAccuracy()) accuracy.toDouble() else Double.MAX_VALUE,
     timestamp = Instant.ofEpochMilli(time),
+    // V1.1 §E: altitud GPS sólo si el sistema la da; la precisión vertical existe desde API 26.
+    // Sin precisión vertical el núcleo no usa la altitud para el desnivel (exige 0 ≤ vacc ≤ 15 m).
+    altitudeMeters = if (hasAltitude()) altitude else null,
+    verticalAccuracyMeters = if (hasVerticalAccuracy()) verticalAccuracyMeters.toDouble() else null,
 )

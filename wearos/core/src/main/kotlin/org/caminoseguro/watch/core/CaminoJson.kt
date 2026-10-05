@@ -36,6 +36,20 @@ object CaminoJson {
     fun decodeCategories(text: String): Set<PoiCategory> =
         json.decodeFromString(SetSerializer(PoiCategory.serializer()), text)
 
+    /** Preferencias de presentación (V1.1 §G). */
+    fun encodeDisplayPreferences(prefs: DisplayPreferences): String =
+        json.encodeToString(DisplayPreferences.serializer(), prefs)
+
+    fun decodeDisplayPreferences(text: String): DisplayPreferences =
+        json.decodeFromString(DisplayPreferences.serializer(), text)
+
+    /** Aviso «Accede desde tu esfera» (V1.1 §I). */
+    fun encodeFaceHint(state: FaceHintState): String =
+        json.encodeToString(FaceHintState.serializer(), state)
+
+    fun decodeFaceHint(text: String): FaceHintState =
+        json.decodeFromString(FaceHintState.serializer(), text)
+
     fun encodeEvent(event: SyncEvent): String =
         json.encodeToString(SyncEvent.serializer(), event)
 }

@@ -151,3 +151,23 @@ Cuando llegue el contrato se añade un adaptador `HttpCaminoApi` en `src/release
 - Español (`values/`, `tools:locale="es"`) e inglés (`values-en/`) con todas las cadenas.
   `AppResourcesTest` (en `:core`, sin Android SDK) comprueba claves y marcadores iguales, apóstrofos
   escapados, que toda `R.string.x` usada existe y que los textos SOS son honestos.
+
+## V1.1: trayecto completo, Lugares, complicación
+
+- **Trayecto activo** (spec V1.1 §B): estadísticas principales (distancia, tiempo en movimiento,
+  ritmo/velocidad, «En marcha»/«Pausado») → altitud/subida/bajada (GPS) → perfil registrado (Canvas,
+  sin unir huecos) → lugares útiles (máx. 3, "en línea recta") → «Pausar»/«Reanudar» → «Finalizar trayecto».
+- **Preferencias**: unidades y ritmo/velocidad en `filesDir/camino/display_prefs.json`; idioma por app
+  con `LocaleManager` (API 33+, `res/xml/locales_config.xml`); en API 30–32 sigue el idioma del reloj.
+  Todas las cifras (pantalla, TalkBack, notificaciones, complicación) pasan por `core/DisplayFormat`.
+- **Complicación** (`complication/CaminoComplicationService`, `watchface-complications-data-source-ktx`
+  1.2.1): SHORT_TEXT, LONG_TEXT, MONOCHROMATIC_IMAGE y RANGED_VALUE. Lee el estado local del
+  controlador (sin red). `UPDATE_PERIOD_SECONDS=0`; `ComplicationUpdates` pide `requestUpdateAll()` al
+  empezar/pausar/reanudar/finalizar o cambiar unidades/idioma, y por distancia como mucho cada 5 min.
+  **El sistema decide cuándo consulta y repinta la esfera**: la complicación puede ir con retraso.
+  Tocarla abre Trayecto (`PendingIntent` inmutable); nunca inicia un trayecto ni una llamada.
+- **Aviso «Accede desde tu esfera»** (`face_hint.json`: notDecided/dismissed/helpOpened) e
+  instrucciones manuales: no hay API pública verificada para abrir el editor de esfera.
+- **Escenarios de demostración** (sólo Debug): `DemoHooks.apply` (null en `main`) lo invoca
+  `MainActivity.onCreate` antes de `setContent`; `AppContainer.installDemo(controller, dialer, storageDir)`
+  sustituye controlador, marcador y almacenes de preferencias sin tocar los datos reales.

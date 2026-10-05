@@ -7,13 +7,12 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.wear.compose.foundation.lazy.ScalingLazyListScope
 import androidx.wear.compose.foundation.lazy.ScalingLazyListState
+import androidx.wear.compose.foundation.lazy.items
 import androidx.wear.compose.material.ListHeader
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
 import org.caminoseguro.watch.R
-import org.caminoseguro.watch.core.Formatters
 import org.caminoseguro.watch.core.StorageIssue
-import org.caminoseguro.watch.platform.Notifications
 
 // Pantalla principal (ruta "home"): sin trayecto (Inicio) o con trayecto en curso. Ambas con la
 // cabecera fija «SOS» arriba a la derecha, accesible sin recorrer las estadísticas.
@@ -36,6 +35,7 @@ fun TripIdleScreen(
     startBusy: Boolean,
     onStart: () -> Unit,
     onSos: () -> Unit,
+    onPlaces: () -> Unit,
     onStats: () -> Unit,
     onSync: () -> Unit,
     onSettings: () -> Unit,
@@ -55,6 +55,8 @@ fun TripIdleScreen(
         }
         permissionStatus(state)
         storageWarnings(state, onDismissIssue)
+        // Lugares sin trayecto (spec V1.1 §A).
+        item { WideChip(text = stringResource(R.string.places_title), onClick = onPlaces) }
         item { WideChip(text = stringResource(R.string.action_stats), onClick = onStats) }
         item { SyncStatusChip(state.sync, state.isDemo, onSync) }
         item { WideChip(text = stringResource(R.string.action_settings), onClick = onSettings) }
@@ -87,15 +89,25 @@ private fun ScalingLazyListScope.permissionStatus(state: CaminoUiState) {
     }
 }
 
-// ------------------------------------------------------------------ 2. Trayecto en curso
+// ------------------------------------------------------------------ 2. Trayecto en curso (V1.1 §B)
 
+/**
+ * Orden del contenido (spec V1.1 §B): A estadísticas principales (visibles al abrir, sin desplazarse,
+ * en un reloj redondo de ~192 dp), B altitud y desnivel, C perfil compacto (→ vista ampliada),
+ * D lugares útiles (máx. 3, → ficha; «Ver todos» → Lugares), E «Pausar»/«Reanudar» y, al final y
+ * separado, «Finalizar trayecto» (con confirmación). «SOS» sigue fijo en la cabecera.
+ */
 @Composable
 fun TripActiveScreen(
     state: CaminoUiState,
     active: ActiveStageUi,
     listState: ScalingLazyListState,
     onSos: () -> Unit,
+    onTogglePause: () -> Unit,
     onFinish: () -> Unit,
+    onProfile: () -> Unit,
+    onPlace: (String) -> Unit,
+    onPlaces: () -> Unit,
     onStats: () -> Unit,
     onSync: () -> Unit,
     onSettings: () -> Unit,
@@ -106,76 +118,81 @@ fun TripActiveScreen(
     LaunchedEffect(alert) {
         if (alert != null) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
     }
-    val f = active.figures
+    val f = LocalFormat.current
+    val figures = active.figures
 
     TripScaffold(listState = listState, onSos = onSos) {
-        demoBadge(state.isDemo)
-        item { CenteredText(active.stageName, style = MaterialTheme.typography.caption1) }
+        // A. Estadísticas principales (primer elemento: lo primero que se ve y que lee TalkBack).
+        item { PrimaryStats(active, isDemo = state.isDemo) }
 
-        // Cifras (orden de lectura: restante, recorrido, pasos, tiempo). Sin ceros falsos.
+        // B. Altitud y desnivel.
+        item { SectionLabel(stringResource(R.string.section_altitude)) }
+        item { AltitudeBlock(active) }
+
+        // C. Perfil registrado compacto.
+        item { SectionLabel(stringResource(R.string.section_profile)) }
+        item { ProfileCard(active.profile, onOpen = onProfile) }
+
+        // D. Lugares útiles (máx. 3), distancia en línea recta.
+        item { SectionLabel(stringResource(R.string.section_places)) }
+        if (!active.hasFix) {
+            item {
+                CenteredText(
+                    stringResource(if (state.permissions.location) R.string.active_no_fix else R.string.places_no_location),
+                    style = MaterialTheme.typography.caption2,
+                )
+            }
+        } else if (active.usefulPlaces.isEmpty()) {
+            item { CenteredText(stringResource(R.string.places_none_stage), style = MaterialTheme.typography.caption2) }
+        }
+        items(active.usefulPlaces, key = { it.poi.id }) { place ->
+            UsefulPlaceChip(place, onClick = { onPlace(place.poi.id) })
+        }
+        item { WideChip(text = stringResource(R.string.places_see_all), onClick = onPlaces) }
+
+        // E. Pausar / Reanudar.
         item {
-            val label = stringResource(R.string.trip_label_remaining)
-            val meters = f.remainingMeters
-            StatRow(
-                label = label,
-                value = meters?.let { Formatters.distance(it) } ?: stringResource(R.string.stat_unavailable),
-                spoken = meters?.let { stringResource(R.string.active_remaining_a11y, Formatters.distanceSpoken(it)) }
-                    ?: stringResource(R.string.stat_unavailable_a11y, label),
-                hero = true,
+            WideChip(
+                text = stringResource(if (active.paused) R.string.action_resume else R.string.action_pause),
+                primary = active.paused,
+                onClick = onTogglePause,
             )
         }
+        if (active.paused) {
+            item { CenteredText(stringResource(R.string.trip_paused_note), style = MaterialTheme.typography.caption2) }
+        }
+
+        // Más datos: etapa, restante, pasos y duración total (diferenciada del tiempo en movimiento).
         item {
-            val label = stringResource(R.string.trip_label_walked)
-            val meters = f.walkedMeters
-            StatRow(
-                label = label,
-                value = meters?.let { Formatters.distance(it) } ?: stringResource(R.string.stat_unavailable),
-                spoken = meters?.let { stringResource(R.string.active_walked_a11y, Formatters.distanceSpoken(it)) }
-                    ?: stringResource(R.string.stat_unavailable_a11y, label),
-            )
+            val remaining = figures.remainingMeters
+            val text = remaining?.let { stringResource(R.string.trip_stage_line, active.stageName, f.distance(it)) }
+                ?: active.stageName
+            val spoken = remaining?.let { stringResource(R.string.trip_stage_line_a11y, active.stageName, f.distanceSpoken(it)) }
+                ?: active.stageName
+            ValueText(text, spoken, style = MaterialTheme.typography.caption1)
         }
         item {
             val label = stringResource(R.string.trip_label_steps)
-            val steps = f.steps
+            val steps = figures.steps
             StatRow(
                 label = label,
-                value = steps?.let { Formatters.steps(it) } ?: stringResource(R.string.stat_unavailable),
-                spoken = steps?.let { Formatters.stepsSpoken(it.toLong()) }
-                    ?: stringResource(R.string.stat_unavailable_a11y, label),
+                value = steps?.let { f.steps(it.toLong()) } ?: stringResource(R.string.stat_unavailable),
+                spoken = steps?.let { f.stepsSpoken(it.toLong()) } ?: stringResource(R.string.stat_unavailable_a11y, label),
             )
         }
         item {
+            val label = stringResource(R.string.trip_label_total_time)
             StatRow(
-                label = stringResource(R.string.trip_label_time),
-                value = Formatters.duration(f.elapsedSeconds),
-                spoken = stringResource(R.string.active_time_a11y, Formatters.durationSpoken(f.elapsedSeconds)),
+                label = label,
+                value = f.duration(figures.elapsedSeconds),
+                spoken = stringResource(R.string.label_value_a11y, label, f.durationSpoken(figures.elapsedSeconds)),
                 divider = false,
             )
-        }
-
-        // Próximo POI (si hay fix).
-        val next = active.nextPoi
-        if (next != null) {
-            item {
-                val category = stringResource(Notifications.categoryLabel(next.poi.category))
-                ValueText(
-                    text = stringResource(R.string.active_next_poi, Formatters.poiAlertText(next.poi, next.distanceMeters)),
-                    spoken = stringResource(
-                        R.string.active_next_poi_a11y,
-                        next.poi.name,
-                        category,
-                        Formatters.distanceSpoken(next.distanceMeters),
-                    ),
-                    style = MaterialTheme.typography.body2,
-                )
-            }
-        } else if (!active.hasFix && state.permissions.location) {
-            item { CenteredText(stringResource(R.string.active_no_fix), style = MaterialTheme.typography.caption1) }
         }
         if (alert != null) {
             item {
                 CenteredText(
-                    stringResource(R.string.active_last_alert, Formatters.poiAlertText(alert.poi, alert.distanceMeters)),
+                    stringResource(R.string.active_last_alert, f.poiAlertText(alert.poi, alert.distanceMeters)),
                     style = MaterialTheme.typography.caption1,
                 )
             }

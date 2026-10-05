@@ -15,7 +15,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import org.caminoseguro.watch.R
-import org.caminoseguro.watch.core.Formatters
+import org.caminoseguro.watch.core.DisplayFormat
 import org.caminoseguro.watch.core.PoiAlert
 import org.caminoseguro.watch.core.PoiCategory
 import org.caminoseguro.watch.ui.MainActivity
@@ -83,10 +83,11 @@ object Notifications {
     fun poiNotificationId(poiId: String): Int = POI_NOTIFICATION_BASE_ID + (poiId.hashCode() and 0x0FFF)
 
     @SuppressLint("MissingPermission") // comprobado con canPostNotifications()
-    fun postPoiAlert(context: Context, alert: PoiAlert) {
+    fun postPoiAlert(context: Context, alert: PoiAlert, format: DisplayFormat) {
         if (!canPostNotifications(context)) return
         val category = context.getString(categoryLabel(alert.poi.category))
-        val text = Formatters.poiAlertText(alert.poi, alert.distanceMeters)
+        // Unidades del usuario (V1.1 §G); distancia en línea recta.
+        val text = format.poiAlertText(alert.poi, alert.distanceMeters)
         val notification = NotificationCompat.Builder(context, CHANNEL_POI)
             .setSmallIcon(R.drawable.ic_stat_camino)
             .setContentTitle(context.getString(R.string.notif_poi_title, category))
@@ -115,10 +116,10 @@ object Notifications {
 }
 
 /** Adaptador `Notifier` de la capa app: notificación local + vibración del canal. */
-class PoiNotifier(private val context: Context) {
+class PoiNotifier(private val context: Context, private val format: () -> DisplayFormat) {
     fun notify(alert: PoiAlert) {
         // Sin nombre ni coordenadas en el log.
         Log.i("CaminoNotify", "Aviso POI (${alert.poi.category.name})")
-        Notifications.postPoiAlert(context, alert)
+        Notifications.postPoiAlert(context, alert, format())
     }
 }

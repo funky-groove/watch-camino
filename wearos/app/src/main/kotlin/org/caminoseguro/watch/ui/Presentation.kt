@@ -3,9 +3,11 @@ package org.caminoseguro.watch.ui
 import org.caminoseguro.watch.core.CaminoStats
 import org.caminoseguro.watch.core.DayFigures
 import org.caminoseguro.watch.core.LocationFix
+import org.caminoseguro.watch.core.Places
 import org.caminoseguro.watch.core.Poi
 import org.caminoseguro.watch.core.PoiAlertEngine
 import org.caminoseguro.watch.core.PoiDistance
+import org.caminoseguro.watch.core.ProfileSample
 import org.caminoseguro.watch.core.SessionSnapshot
 import org.caminoseguro.watch.core.SessionSummary
 import org.caminoseguro.watch.core.Stage
@@ -29,7 +31,30 @@ data class ActiveStageUi(
     val hasFix: Boolean,
     /** Cifras para la pantalla principal, sin ceros falsos (null = "sin datos"). */
     val figures: TripFigures,
+    // ---- V1.1 ----
+    /** «Pausado» (true) / «En marcha» (false). */
+    val paused: Boolean = false,
+    /** Tiempo en movimiento (§D); se muestra diferenciado de la duración total. */
+    val movingSeconds: Long = 0,
+    /** Última altitud GPS válida; null si nunca hubo. */
+    val altitude: Double? = null,
+    /** La altitud tiene más de 5 min (o no hay). */
+    val altitudeStale: Boolean = true,
+    /** Hubo al menos una altitud válida: subida/bajada son reales (si no, "sin datos"). */
+    val hasAltitudeData: Boolean = false,
+    val ascentMeters: Double = 0.0,
+    val descentMeters: Double = 0.0,
+    /** Perfil registrado (§F). */
+    val profile: List<ProfileSample> = emptyList(),
+    /** Lugares útiles: máx. 3 (agua, alojamiento, resto), distancia en línea recta. */
+    val usefulPlaces: List<PoiDistance> = emptyList(),
 )
+
+/**
+ * Lugares: POIs (de la etapa activa o todos) y la posición para medir la distancia en línea recta.
+ * [demoData]: los lugares vienen de fixtures de DEMOSTRACIÓN con coordenadas aproximadas (§0).
+ */
+data class PlacesSource(val pois: List<Poi>, val position: LocationFix?, val demoData: Boolean)
 
 data class StageChoice(val stage: Stage, val suggested: Boolean)
 
@@ -43,7 +68,14 @@ data class SummaryUi(
     val stageName: String,
     val distanceMeters: Double,
     val steps: Int,
+    /** Duración total (`finishedAt − startedAt`). */
     val activeSeconds: Long,
+    /** Tiempo en movimiento (≤ duración total). */
+    val movingSeconds: Long = 0,
+    val pausedSeconds: Long = 0,
+    val ascentMeters: Int = 0,
+    val descentMeters: Int = 0,
+    val profile: List<ProfileSample> = emptyList(),
 )
 
 enum class SyncLabel { SYNCED, PENDING, OFFLINE, BLOCKED, NEEDS_LINK, SYNCING }
@@ -76,6 +108,15 @@ object Presentation {
             nextPoi = next,
             hasFix = latestFix != null,
             figures = TripFigures.of(session, stage, now, locationAvailable, stepsAvailable),
+            paused = session.isPaused,
+            movingSeconds = session.movingSeconds.toLong(),
+            altitude = session.altitude,
+            altitudeStale = session.isAltitudeStale(now),
+            hasAltitudeData = session.altitudeRef != null,
+            ascentMeters = session.ascentMeters,
+            descentMeters = session.descentMeters,
+            profile = session.profile,
+            usefulPlaces = Places.useful(pois, latestFix?.point),
         )
     }
 
@@ -98,6 +139,11 @@ object Presentation {
         distanceMeters = summary.distanceMeters.toDouble(),
         steps = summary.steps,
         activeSeconds = summary.activeSeconds.toLong(),
+        movingSeconds = summary.movingSeconds.toLong(),
+        pausedSeconds = summary.pausedSeconds.toLong(),
+        ascentMeters = summary.ascentMeters,
+        descentMeters = summary.descentMeters,
+        profile = summary.profile,
     )
 
     fun syncLabel(status: SyncStatus): SyncLabel = when (status) {

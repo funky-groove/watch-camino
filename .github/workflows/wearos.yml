@@ -6,6 +6,11 @@ on:
   pull_request:
     paths: ["wearos/**", "shared/**", ".github/workflows/wearos.yml"]
   workflow_dispatch:
+    inputs:
+      publish_screenshots:
+        description: "Commitear las capturas en docs/screenshots/wearos de esta rama"
+        type: boolean
+        default: false
 
 concurrency:
   group: wearos-${{ github.ref }}
@@ -41,3 +46,110 @@ jobs:
           name: lint-report
           path: wearos/app/build/reports/lint-results-debug.html
           if-no-files-found: ignore
+      - name: Upload Debug APK (capturas)
+        uses: actions/upload-artifact@v4
+        with:
+          name: wear-debug-apk
+          path: wearos/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 3
+
+  screenshots:
+    name: Capturas (emulador Wear OS, escenarios DEMO)
+    needs: build
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      WEAR_API: "33"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Descargar APK Debug
+        uses: actions/download-artifact@v4
+        with:
+          name: wear-debug-apk
+          path: wearos/app/build/outputs/apk/debug
+      - name: Habilitar KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Pillow (mosaico opcional)
+        run: python3 -m pip install --user pillow || echo "Pillow no instalado; sin contact_sheet.png"
+      # Reloj redondo pequeño: pasada completa (negro/perla, inglés, texto grande).
+      - name: Capturas — wearos_small_round (API ${{ env.WEAR_API }})
+        id: small
+        continue-on-error: true
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ env.WEAR_API }}
+          target: android-wear
+          arch: x86_64
+          profile: wearos_small_round
+          avd-name: wear-small-round
+          force-avd-creation: true
+          disable-animations: true
+          emulator-boot-timeout: 900
+          emulator-options: -no-window -no-snapshot -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: bash "$GITHUB_WORKSPACE/wearos/scripts/screenshots.sh" "$GITHUB_WORKSPACE/wearos/out" small-round full
+      # Si no hay imagen android-wear API 33 x86_64 en el SDK, se reintenta con API 30 (Wear OS 3).
+      - name: Capturas — wearos_small_round (API 30, alternativa)
+        id: small30
+        if: steps.small.outcome == 'failure'
+        continue-on-error: true
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: android-wear
+          arch: x86
+          profile: wearos_small_round
+          avd-name: wear-small-round-30
+          force-avd-creation: true
+          disable-animations: true
+          emulator-boot-timeout: 900
+          emulator-options: -no-window -no-snapshot -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: bash "$GITHUB_WORKSPACE/wearos/scripts/screenshots.sh" "$GITHUB_WORKSPACE/wearos/out" small-round-api30 full
+      # Reloj redondo grande: sólo negro/perla (base), si queda tiempo.
+      - name: Capturas — wearos_large_round
+        id: large
+        if: steps.small.outcome == 'success'
+        continue-on-error: true
+        timeout-minutes: 15
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ env.WEAR_API }}
+          target: android-wear
+          arch: x86_64
+          profile: wearos_large_round
+          avd-name: wear-large-round
+          force-avd-creation: true
+          disable-animations: true
+          emulator-boot-timeout: 900
+          emulator-options: -no-window -no-snapshot -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: bash "$GITHUB_WORKSPACE/wearos/scripts/screenshots.sh" "$GITHUB_WORKSPACE/wearos/out" large-round base
+      - name: Comprobar que hay capturas
+        run: |
+          n=$(find wearos/out -maxdepth 1 -name '*.png' ! -name 'contact_sheet*' 2>/dev/null | wc -l)
+          echo "Capturas: $n (small=${{ steps.small.outcome }} small30=${{ steps.small30.outcome }} large=${{ steps.large.outcome }})"
+          [ "$n" -gt 0 ] || { echo "::error::No se obtuvo ninguna captura"; exit 1; }
+      - name: Subir capturas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wear-screenshots
+          path: wearos/out
+          if-no-files-found: warn
+      # Sólo a petición (workflow_dispatch): deja las capturas versionadas en la rama para revisión.
+      # Un push hecho con GITHUB_TOKEN no vuelve a disparar workflows.
+      - name: Publicar capturas en la rama
+        if: github.event_name == 'workflow_dispatch' && inputs.publish_screenshots
+        run: |
+          rm -rf docs/screenshots/wearos
+          mkdir -p docs/screenshots/wearos
+          find wearos/out -maxdepth 1 \( -name '*.png' -o -name 'index.md' \) -exec cp {} docs/screenshots/wearos/ \;
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/screenshots/wearos
+          git commit -m "Capturas Wear OS del emulador (CI, escenarios DEMO) @ ${GITHUB_SHA::7}" || exit 0
+          git push origin "HEAD:${GITHUB_REF_NAME}"
