@@ -1,0 +1,41 @@
+{
+  "jitter": 0,
+  "cases": [
+    {
+      "attempt": 1,
+      "seconds": 30
+    },
+    {
+      "attempt": 2,
+      "seconds": 60
+    },
+    {
+      "attempt": 3,
+      "seconds": 120
+    },
+    {
+      "attempt": 4,
+      "seconds": 240
+    },
+    {
+      "attempt": 5,
+      "seconds": 480
+    },
+    {
+      "attempt": 6,
+      "seconds": 960
+    },
+    {
+      "attempt": 7,
+      "seconds": 1800
+    },
+    {
+      "attempt": 8,
+      "seconds": 1800
+    },
+    {
+      "attempt": 9,
+      "seconds": 1800
+    }
+  ]
+}

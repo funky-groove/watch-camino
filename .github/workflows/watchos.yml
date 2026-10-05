@@ -1,0 +1,59 @@
+name: watchOS
+
+on:
+  push:
+    paths: ["watchos/**", "shared/**", ".github/workflows/watchos.yml"]
+  pull_request:
+    paths: ["watchos/**", "shared/**", ".github/workflows/watchos.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: watchos-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core:
+    name: CaminoCore (swift test)
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: xcodebuild -version && swift --version
+      - name: Conformance + unit tests
+        working-directory: watchos/CaminoCore
+        run: swift test
+
+  app:
+    name: CaminoWatch (xcodebuild, simulador)
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: xcodebuild -version && xcrun simctl list runtimes | grep -i watch || true
+      - name: XcodeGen
+        run: brew install xcodegen
+      - name: Generate project
+        working-directory: watchos
+        run: xcodegen generate
+      - name: Build (watchOS Simulator)
+        working-directory: watchos
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project CaminoWatch.xcodeproj \
+            -scheme CaminoWatch \
+            -configuration Debug \
+            -destination 'generic/platform=watchOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO | tail -n 200
+      - name: Build Release (BlockedCaminoApi)
+        working-directory: watchos
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project CaminoWatch.xcodeproj \
+            -scheme CaminoWatch \
+            -configuration Release \
+            -destination 'generic/platform=watchOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO | tail -n 200

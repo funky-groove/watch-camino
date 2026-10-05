@@ -1,0 +1,21 @@
+# macOS / Xcode
+.DS_Store
+xcuserdata/
+DerivedData/
+build/
+.build/
+.swiftpm/
+# El proyecto Xcode se genera con XcodeGen a partir de watchos/project.yml
+watchos/*.xcodeproj/
+
+# Gradle / Android
+.gradle/
+**/build/
+local.properties
+*.iml
+.idea/
+captures/
+.kotlin/
+
+# Python
+__pycache__/

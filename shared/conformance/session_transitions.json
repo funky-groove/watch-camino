@@ -1,0 +1,223 @@
+{
+  "knownStageIds": [
+    "cf-sarria-portomarin",
+    "cf-portomarin-palas"
+  ],
+  "cases": [
+    {
+      "name": "ciclo_completo",
+      "steps": [
+        {
+          "op": "start",
+          "stageId": "cf-sarria-portomarin",
+          "sessionId": "S1",
+          "t": 1000,
+          "expect": {
+            "state": "active",
+            "error": null,
+            "steps": 0,
+            "history": 0,
+            "queued": [
+              "stage_started"
+            ]
+          }
+        },
+        {
+          "op": "updateSteps",
+          "n": 120,
+          "expect": {
+            "state": "active",
+            "error": null,
+            "steps": 120,
+            "history": 0,
+            "queued": [
+              "stage_started"
+            ]
+          }
+        },
+        {
+          "op": "updateSteps",
+          "n": 80,
+          "expect": {
+            "state": "active",
+            "error": null,
+            "steps": 120,
+            "history": 0,
+            "queued": [
+              "stage_started"
+            ]
+          }
+        },
+        {
+          "op": "finish",
+          "t": 4661.9,
+          "expect": {
+            "state": "idle",
+            "error": null,
+            "history": 1,
+            "activeSeconds": 3661,
+            "summarySteps": 120,
+            "queued": [
+              "stage_started",
+              "stage_finished"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "doble_start",
+      "steps": [
+        {
+          "op": "start",
+          "stageId": "cf-sarria-portomarin",
+          "sessionId": "S1",
+          "t": 0,
+          "expect": {
+            "state": "active",
+            "error": null,
+            "steps": 0,
+            "history": 0,
+            "queued": [
+              "stage_started"
+            ]
+          }
+        },
+        {
+          "op": "start",
+          "stageId": "cf-sarria-portomarin",
+          "sessionId": "S2",
+          "t": 5,
+          "expect": {
+            "state": "active",
+            "error": "alreadyActive",
+            "steps": 0,
+            "history": 0,
+            "queued": [
+              "stage_started"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "etapa_desconocida",
+      "steps": [
+        {
+          "op": "start",
+          "stageId": "nope",
+          "sessionId": "S1",
+          "t": 0,
+          "expect": {
+            "state": "idle",
+            "error": "unknownStage",
+            "history": 0,
+            "queued": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "finish_sin_activa",
+      "steps": [
+        {
+          "op": "finish",
+          "t": 0,
+          "expect": {
+            "state": "idle",
+            "error": "notActive",
+            "history": 0,
+            "queued": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "reloj_hacia_atras",
+      "steps": [
+        {
+          "op": "start",
+          "stageId": "cf-sarria-portomarin",
+          "sessionId": "S1",
+          "t": 500,
+          "expect": {
+            "state": "active",
+            "error": null,
+            "steps": 0,
+            "history": 0,
+            "queued": [
+              "stage_started"
+            ]
+          }
+        },
+        {
+          "op": "finish",
+          "t": 400,
+          "expect": {
+            "state": "idle",
+            "error": null,
+            "history": 1,
+            "activeSeconds": 0,
+            "summarySteps": 0,
+            "queued": [
+              "stage_started",
+              "stage_finished"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "dos_etapas_seguidas",
+      "steps": [
+        {
+          "op": "start",
+          "stageId": "cf-sarria-portomarin",
+          "sessionId": "S1",
+          "t": 0,
+          "expect": {
+            "state": "active",
+            "error": null,
+            "steps": 0,
+            "history": 0,
+            "queued": [
+              "stage_started"
+            ]
+          }
+        },
+        {
+          "op": "finish",
+          "t": 100,
+          "expect": {
+            "state": "idle",
+            "error": null,
+            "history": 1,
+            "activeSeconds": 100,
+            "summarySteps": 0,
+            "queued": [
+              "stage_started",
+              "stage_finished"
+            ]
+          }
+        },
+        {
+          "op": "start",
+          "stageId": "cf-portomarin-palas",
+          "sessionId": "S2",
+          "t": 200,
+          "expect": {
+            "state": "active",
+            "error": null,
+            "steps": 0,
+            "history": 1,
+            "queued": [
+              "stage_started",
+              "stage_finished",
+              "stage_started"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

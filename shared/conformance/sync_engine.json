@@ -1,0 +1,273 @@
+{
+  "cases": [
+    {
+      "name": "cola_vacia",
+      "queue": [],
+      "responses": [],
+      "now": 1000,
+      "manual": false,
+      "backoff": {
+        "attempt": 0,
+        "nextAttemptAt": null
+      },
+      "expected": {
+        "status": "synced",
+        "sent": [],
+        "remaining": [],
+        "deadLetters": [],
+        "attempt": 0,
+        "nextAttemptAt": null
+      }
+    },
+    {
+      "name": "todo_aceptado",
+      "queue": [
+        "e1",
+        "e2"
+      ],
+      "responses": [
+        "accepted",
+        "accepted"
+      ],
+      "now": 1000,
+      "manual": false,
+      "backoff": {
+        "attempt": 0,
+        "nextAttemptAt": null
+      },
+      "expected": {
+        "status": "synced",
+        "sent": [
+          "e1",
+          "e2"
+        ],
+        "remaining": [],
+        "deadLetters": [],
+        "attempt": 0,
+        "nextAttemptAt": null
+      }
+    },
+    {
+      "name": "reintentable_para",
+      "queue": [
+        "e1",
+        "e2",
+        "e3"
+      ],
+      "responses": [
+        "accepted",
+        "retryable"
+      ],
+      "now": 1000,
+      "manual": false,
+      "backoff": {
+        "attempt": 0,
+        "nextAttemptAt": null
+      },
+      "expected": {
+        "status": "pending",
+        "sent": [
+          "e1",
+          "e2"
+        ],
+        "remaining": [
+          "e2",
+          "e3"
+        ],
+        "deadLetters": [],
+        "attempt": 1,
+        "nextAttemptAt": 1030
+      }
+    },
+    {
+      "name": "segundo_reintento",
+      "queue": [
+        "e2"
+      ],
+      "responses": [
+        "retryable"
+      ],
+      "now": 2000,
+      "manual": false,
+      "backoff": {
+        "attempt": 1,
+        "nextAttemptAt": 1030
+      },
+      "expected": {
+        "status": "pending",
+        "sent": [
+          "e2"
+        ],
+        "remaining": [
+          "e2"
+        ],
+        "deadLetters": [],
+        "attempt": 2,
+        "nextAttemptAt": 2060
+      }
+    },
+    {
+      "name": "backoff_respetado",
+      "queue": [
+        "e2"
+      ],
+      "responses": [],
+      "now": 1010,
+      "manual": false,
+      "backoff": {
+        "attempt": 1,
+        "nextAttemptAt": 1030
+      },
+      "expected": {
+        "status": "pending",
+        "sent": [],
+        "remaining": [
+          "e2"
+        ],
+        "deadLetters": [],
+        "attempt": 1,
+        "nextAttemptAt": 1030
+      }
+    },
+    {
+      "name": "manual_ignora_backoff",
+      "queue": [
+        "e2"
+      ],
+      "responses": [
+        "accepted"
+      ],
+      "now": 1010,
+      "manual": true,
+      "backoff": {
+        "attempt": 1,
+        "nextAttemptAt": 1030
+      },
+      "expected": {
+        "status": "synced",
+        "sent": [
+          "e2"
+        ],
+        "remaining": [],
+        "deadLetters": [],
+        "attempt": 0,
+        "nextAttemptAt": null
+      }
+    },
+    {
+      "name": "permanente_a_dead_letter",
+      "queue": [
+        "e1",
+        "e2"
+      ],
+      "responses": [
+        "permanent",
+        "accepted"
+      ],
+      "now": 1000,
+      "manual": false,
+      "backoff": {
+        "attempt": 0,
+        "nextAttemptAt": null
+      },
+      "expected": {
+        "status": "synced",
+        "sent": [
+          "e1",
+          "e2"
+        ],
+        "remaining": [],
+        "deadLetters": [
+          "e1"
+        ],
+        "attempt": 0,
+        "nextAttemptAt": null
+      }
+    },
+    {
+      "name": "no_autorizado_para",
+      "queue": [
+        "e1",
+        "e2"
+      ],
+      "responses": [
+        "unauthorized"
+      ],
+      "now": 1000,
+      "manual": false,
+      "backoff": {
+        "attempt": 0,
+        "nextAttemptAt": null
+      },
+      "expected": {
+        "status": "needsLink",
+        "sent": [
+          "e1"
+        ],
+        "remaining": [
+          "e1",
+          "e2"
+        ],
+        "deadLetters": [],
+        "attempt": 0,
+        "nextAttemptAt": null
+      }
+    },
+    {
+      "name": "bloqueado_no_pierde",
+      "queue": [
+        "e1",
+        "e2"
+      ],
+      "responses": [
+        "blocked"
+      ],
+      "now": 1000,
+      "manual": false,
+      "backoff": {
+        "attempt": 0,
+        "nextAttemptAt": null
+      },
+      "expected": {
+        "status": "blocked",
+        "sent": [
+          "e1"
+        ],
+        "remaining": [
+          "e1",
+          "e2"
+        ],
+        "deadLetters": [],
+        "attempt": 0,
+        "nextAttemptAt": null
+      }
+    },
+    {
+      "name": "backoff_tope",
+      "queue": [
+        "e1"
+      ],
+      "responses": [
+        "retryable"
+      ],
+      "now": 0,
+      "manual": false,
+      "backoff": {
+        "attempt": 7,
+        "nextAttemptAt": null
+      },
+      "expected": {
+        "status": "pending",
+        "sent": [
+          "e1"
+        ],
+        "remaining": [
+          "e1"
+        ],
+        "deadLetters": [],
+        "attempt": 8,
+        "nextAttemptAt": 1800
+      }
+    }
+  ]
+}

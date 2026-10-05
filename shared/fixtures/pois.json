@@ -1,0 +1,18 @@
+{
+  "_notice": "DATOS DE DEMOSTRACION. Coordenadas aproximadas. No usar para orientarse en el Camino real. Sustituir por la fuente del backend cuando exista contrato.",
+  "pois": [
+    { "id": "p01", "stageId": "cf-sarria-portomarin", "name": "Fuente de Barbadelo", "category": "water", "location": { "lat": 42.7701, "lon": -7.4552 } },
+    { "id": "p02", "stageId": "cf-sarria-portomarin", "name": "Mojón km 100", "category": "landmark", "location": { "lat": 42.7835, "lon": -7.5536 } },
+    { "id": "p03", "stageId": "cf-sarria-portomarin", "name": "Albergue de Portomarín", "category": "shelter", "location": { "lat": 42.8070, "lon": -7.6150 } },
+    { "id": "p04", "stageId": "cf-portomarin-palas", "name": "Bar de Gonzar", "category": "food", "location": { "lat": 42.8236, "lon": -7.6962 } },
+    { "id": "p05", "stageId": "cf-portomarin-palas", "name": "Fuente de Ligonde", "category": "water", "location": { "lat": 42.8569, "lon": -7.7960 } },
+    { "id": "p06", "stageId": "cf-portomarin-palas", "name": "Farmacia de Palas de Rei", "category": "pharmacy", "location": { "lat": 42.8730, "lon": -7.8690 } },
+    { "id": "p07", "stageId": "cf-palas-arzua", "name": "Iglesia de Santa María de Melide", "category": "landmark", "location": { "lat": 42.9140, "lon": -8.0140 } },
+    { "id": "p08", "stageId": "cf-palas-arzua", "name": "Centro de salud de Melide", "category": "health", "location": { "lat": 42.9150, "lon": -8.0160 } },
+    { "id": "p09", "stageId": "cf-palas-arzua", "name": "Albergue de Arzúa", "category": "shelter", "location": { "lat": 42.9268, "lon": -8.1630 } },
+    { "id": "p10", "stageId": "cf-arzua-pedrouzo", "name": "Fuente de Salceda", "category": "water", "location": { "lat": 42.9257, "lon": -8.2810 } },
+    { "id": "p11", "stageId": "cf-arzua-pedrouzo", "name": "Farmacia de O Pedrouzo", "category": "pharmacy", "location": { "lat": 42.9052, "lon": -8.3605 } },
+    { "id": "p12", "stageId": "cf-pedrouzo-santiago", "name": "Monte do Gozo", "category": "landmark", "location": { "lat": 42.8862, "lon": -8.4950 } },
+    { "id": "p13", "stageId": "cf-pedrouzo-santiago", "name": "Catedral de Santiago", "category": "landmark", "location": { "lat": 42.8806, "lon": -8.5446 } }
+  ]
+}

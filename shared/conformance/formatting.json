@@ -1,0 +1,160 @@
+{
+  "distance": [
+    {
+      "meters": 0,
+      "text": "0 m"
+    },
+    {
+      "meters": -5,
+      "text": "0 m"
+    },
+    {
+      "meters": 4,
+      "text": "0 m"
+    },
+    {
+      "meters": 5,
+      "text": "10 m"
+    },
+    {
+      "meters": 340,
+      "text": "340 m"
+    },
+    {
+      "meters": 994.9,
+      "text": "990 m"
+    },
+    {
+      "meters": 995,
+      "text": "1,0 km"
+    },
+    {
+      "meters": 999,
+      "text": "1,0 km"
+    },
+    {
+      "meters": 1000,
+      "text": "1,0 km"
+    },
+    {
+      "meters": 1049,
+      "text": "1,0 km"
+    },
+    {
+      "meters": 1050,
+      "text": "1,1 km"
+    },
+    {
+      "meters": 1234,
+      "text": "1,2 km"
+    },
+    {
+      "meters": 9940,
+      "text": "9,9 km"
+    },
+    {
+      "meters": 9949.9,
+      "text": "9,9 km"
+    },
+    {
+      "meters": 9950,
+      "text": "10 km"
+    },
+    {
+      "meters": 9999,
+      "text": "10 km"
+    },
+    {
+      "meters": 10000,
+      "text": "10 km"
+    },
+    {
+      "meters": 10499,
+      "text": "10 km"
+    },
+    {
+      "meters": 10500,
+      "text": "11 km"
+    },
+    {
+      "meters": 22200,
+      "text": "22 km"
+    },
+    {
+      "meters": 123456,
+      "text": "123 km"
+    }
+  ],
+  "duration": [
+    {
+      "seconds": 0,
+      "text": "0 min"
+    },
+    {
+      "seconds": 59,
+      "text": "0 min"
+    },
+    {
+      "seconds": 60,
+      "text": "1 min"
+    },
+    {
+      "seconds": 2700,
+      "text": "45 min"
+    },
+    {
+      "seconds": 3599,
+      "text": "59 min"
+    },
+    {
+      "seconds": 3600,
+      "text": "1 h 00 min"
+    },
+    {
+      "seconds": 3900,
+      "text": "1 h 05 min"
+    },
+    {
+      "seconds": 7199,
+      "text": "1 h 59 min"
+    },
+    {
+      "seconds": 36000,
+      "text": "10 h 00 min"
+    },
+    {
+      "seconds": -3,
+      "text": "0 min"
+    }
+  ],
+  "steps": [
+    {
+      "steps": 0,
+      "text": "0"
+    },
+    {
+      "steps": -1,
+      "text": "0"
+    },
+    {
+      "steps": 999,
+      "text": "999"
+    },
+    {
+      "steps": 1000,
+      "text": "1.000"
+    },
+    {
+      "steps": 1234,
+      "text": "1.234"
+    },
+    {
+      "steps": 25000,
+      "text": "25.000"
+    },
+    {
+      "steps": 1234567,
+      "text": "1.234.567"
+    }
+  ]
+}

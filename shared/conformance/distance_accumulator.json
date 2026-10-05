@@ -1,0 +1,218 @@
+{
+  "tolerance_m": 0.01,
+  "cases": [
+    {
+      "name": "vacio",
+      "fixes": [],
+      "distance_m": 0.0,
+      "last_fix_index": null
+    },
+    {
+      "name": "primer_fix_no_suma",
+      "fixes": [
+        {
+          "lat": 42.7808,
+          "lon": -7.4141,
+          "acc": 5,
+          "t": 0
+        }
+      ],
+      "distance_m": 0.0,
+      "last_fix_index": 0
+    },
+    {
+      "name": "dos_fixes_validos",
+      "fixes": [
+        {
+          "lat": 42.7808,
+          "lon": -7.4141,
+          "acc": 5,
+          "t": 0
+        },
+        {
+          "lat": 42.7812497,
+          "lon": -7.4141,
+          "acc": 5,
+          "t": 30
+        }
+      ],
+      "distance_m": 50.0044,
+      "last_fix_index": 1
+    },
+    {
+      "name": "descarta_baja_precision",
+      "fixes": [
+        {
+          "lat": 42.7808,
+          "lon": -7.4141,
+          "acc": 5,
+          "t": 0
+        },
+        {
+          "lat": 42.7812497,
+          "lon": -7.4141,
+          "acc": 80,
+          "t": 30
+        },
+        {
+          "lat": 42.7816993,
+          "lon": -7.4141,
+          "acc": 5,
+          "t": 60
+        }
+      ],
+      "distance_m": 99.9977,
+      "last_fix_index": 2
+    },
+    {
+      "name": "ruido_no_mueve_lastfix",
+      "fixes": [
+        {
+          "lat": 42.7808,
+          "lon": -7.4141,
+          "acc": 5,
+          "t": 0
+        },
+        {
+          "lat": 42.780854,
+          "lon": -7.4141,
+          "acc": 5,
+          "t": 10
+        },
+        {
+          "lat": 42.7809079,
+          "lon": -7.4141,
+          "acc": 5,
+          "t": 20
+        }
+      ],
+      "distance_m": 11.9979,
+      "last_fix_index": 2
+    },
+    {
+      "name": "ruido_relativo_a_precision",
+      "fixes": [
+        {
+          "lat": 42.7808,
+          "lon": -7.4141,
+          "acc": 5,
+          "t": 0
+        },
+        {
+          "lat": 42.7810698,
+          "lon": -7.4141,
+          "acc": 40,
+          "t": 30
+        }
+      ],
+      "distance_m": 0.0,
+      "last_fix_index": 0
+    },
+    {
+      "name": "salto_vehiculo_reancla",
+      "fixes": [
+        {
+          "lat": 42.7808,
+          "lon": -7.4141,
+          "acc": 5,
+          "t": 0
+        },
+        {
+          "lat": 42.7987864,
+          "lon": -7.4141,
+          "acc": 5,
+          "t": 60
+        },
+        {
+          "lat": 42.7992361,
+          "lon": -7.4141,
+          "acc": 5,
+          "t": 90
+        }
+      ],
+      "distance_m": 50.0044,
+      "last_fix_index": 2
+    },
+    {
+      "name": "dt_cero_reancla",
+      "fixes": [
+        {
+          "lat": 42.7808,
+          "lon": -7.4141,
+          "acc": 5,
+          "t": 0
+        },
+        {
+          "lat": 42.7811597,
+          "lon": -7.4141,
+          "acc": 5,
+          "t": 0
+        },
+        {
+          "lat": 42.7815195,
+          "lon": -7.4141,
+          "acc": 5,
+          "t": 30
+        }
+      ],
+      "distance_m": 40.008,
+      "last_fix_index": 2
+    },
+    {
+      "name": "paseo_en_l",
+      "fixes": [
+        {
+          "lat": 42.7808,
+          "lon": -7.4141,
+          "acc": 5,
+          "t": 0
+        },
+        {
+          "lat": 42.7816993,
+          "lon": -7.4141,
+          "acc": 5,
+          "t": 70
+        },
+        {
+          "lat": 42.7816993,
+          "lon": -7.4128747,
+          "acc": 5,
+          "t": 140
+        },
+        {
+          "lat": 42.7816993,
+          "lon": -7.4116494,
+          "acc": 8,
+          "t": 210
+        }
+      ],
+      "distance_m": 299.9943,
+      "last_fix_index": 3
+    },
+    {
+      "name": "primer_fix_malo_ignorado",
+      "fixes": [
+        {
+          "lat": 42.7808,
+          "lon": -7.4141,
+          "acc": 90,
+          "t": 0
+        },
+        {
+          "lat": 42.7812497,
+          "lon": -7.4141,
+          "acc": 5,
+          "t": 30
+        },
+        {
+          "lat": 42.7816993,
+          "lon": -7.4141,
+          "acc": 5,
+          "t": 60
+        }
+      ],
+      "distance_m": 49.9933,
+      "last_fix_index": 2
+    }
+  ]
+}

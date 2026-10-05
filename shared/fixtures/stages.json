@@ -1,0 +1,15 @@
+{
+  "_notice": "DATOS DE DEMOSTRACION. Coordenadas y distancias aproximadas. No usar para orientarse en el Camino real. Sustituir por el catalogo del backend cuando exista contrato.",
+  "stages": [
+    { "id": "cf-sarria-portomarin", "name": "Sarria – Portomarín", "from": "Sarria", "to": "Portomarín", "distanceMeters": 22200,
+      "start": { "lat": 42.7808, "lon": -7.4141 }, "end": { "lat": 42.8075, "lon": -7.6156 } },
+    { "id": "cf-portomarin-palas", "name": "Portomarín – Palas de Rei", "from": "Portomarín", "to": "Palas de Rei", "distanceMeters": 24800,
+      "start": { "lat": 42.8075, "lon": -7.6156 }, "end": { "lat": 42.8733, "lon": -7.8686 } },
+    { "id": "cf-palas-arzua", "name": "Palas de Rei – Arzúa", "from": "Palas de Rei", "to": "Arzúa", "distanceMeters": 28800,
+      "start": { "lat": 42.8733, "lon": -7.8686 }, "end": { "lat": 42.9270, "lon": -8.1636 } },
+    { "id": "cf-arzua-pedrouzo", "name": "Arzúa – O Pedrouzo", "from": "Arzúa", "to": "O Pedrouzo", "distanceMeters": 19300,
+      "start": { "lat": 42.9270, "lon": -8.1636 }, "end": { "lat": 42.9050, "lon": -8.3600 } },
+    { "id": "cf-pedrouzo-santiago", "name": "O Pedrouzo – Santiago", "from": "O Pedrouzo", "to": "Santiago de Compostela", "distanceMeters": 19400,
+      "start": { "lat": 42.9050, "lon": -8.3600 }, "end": { "lat": 42.8806, "lon": -8.5446 } }
+  ]
+}
