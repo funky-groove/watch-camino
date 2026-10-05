@@ -53,6 +53,23 @@ contrato). Las grafías no generalizan: `/api/stamps/check-in` existe, `/api/v1/
 | **B5** | No hay endpoint de entitlement (premium). | El reloj no puede saber si el usuario es premium. | Endpoint de lectura de entitlements. |
 | **B6** | Manifiesto de la imagen de bienvenida (backoffice) aún no existe. | Bienvenida con logo incluido. | Endpoint de manifiesto `{url, sha256, bytes}` en estas mismas rutas. |
 
+## Medición desde este repositorio (2026-10-05, ~21:00 UTC, sin `Origin`, sin credenciales)
+
+| Petición | Respuesta |
+|---|---|
+| `GET /health` | `200 {"status":"ok","service":"bff"}` — el BFF responde |
+| `GET /api/health`, `/openapi.json`, `/api/openapi.json`, `/api/docs` | `404 No route` — no hay OpenAPI publicado |
+| `GET /.well-known/jwks.json` | `403 {"detail":"Privileged route requires Worker proxy bearer (X-Internal-Token)"}` |
+| `GET /api/pois/nearby?lat=42.78&lon=-7.41` | ídem 403 |
+| `GET /api/auth/me`, `GET /api/journeys/current` | ídem 403 |
+
+Lectura: el error tiene formato de FastAPI (`detail`), así que el BFF **sí** reenvía la petición, pero
+FastAPI rechaza el token interno con el que llega. Incluso JWKS, que el contrato declara pública, falla.
+Es coherente con el incidente de producción ya identificado en la sesión del backend
+(`INTERNAL_FASTAPI_TOKEN` con valores distintos en API/BFF/backoffice y secretos de la API en estado
+*Staged* sin aplicar). **Mientras eso no se corrija, ningún cliente (tampoco el reloj) puede usar rutas
+del API a través del BFF.** No es un problema del reloj.
+
 ## Qué falta para implementar el adaptador HTTP
 
 1. OpenAPI (o schemas) de las rutas de la tabla.
